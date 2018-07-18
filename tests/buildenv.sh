@@ -4,21 +4,20 @@ set -eux
 
 RESULT=0
 
-set_error()
+check_precondition()
 {
-    RESULT="${ERROR}"
+    local CMD="${1}"
+    command -V "${CMD}" || (printf "Missing: %s\\n" "${CMD}"; RESULT=1;)
 }
 
-are_all_build_env_preconditions_met()
-{
-    command -v debootstrap >/dev/null 2>&1 || { printf >&2 "Build env dependency missing: please install 'debootstrap'\n"; set_error; }
-    command -v qemu-arm-static >/dev/null 2>&1 || { printf >&2 "Build env dependency missing: please install 'qemu-arm-static'\n"; set_error; }
-    command -v dd >/dev/null 2>&1 || { printf >&2 "Build env dependency missing: please install 'dd'\n"; set_error; }
-    command -v mkfs.ext4 >/dev/null 2>&1 || { printf >&2 "Build env dependency missing: please install 'mkfs.ext4'\n"; set_error; }
-    command -v touch >/dev/null 2>&1 || { printf >&2 "Build env dependency missing: please install 'touch'\n"; set_error; }
-    command -v chroot >/dev/null 2>&1 || { printf >&2 "Build env dependency missing: please install 'chroot'\n"; set_error; }
-}
+printf "Checking build environment preconditions:\\n"
 
-are_all_build_env_preconditions_met
+check_precondition debootstrap
+check_precondition debootstrap
+check_precondition qemu-arm-static
+check_precondition dd
+check_precondition mkfs.ext4
+check_precondition touch
+check_precondition chroot
 
 exit "${RESULT}"
