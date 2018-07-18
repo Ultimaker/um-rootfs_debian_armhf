@@ -46,7 +46,6 @@ un_prepare_bootstrap()
 
 bootstrap_rootfs()
 {
-
     printf "Bootstrapping rootfs to %s\\n" "${ROOTFS_DIR}"
     debootstrap \
         --arch=armhf \

@@ -120,8 +120,7 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
-while getopts ":hr:" options
-do
+while getopts ":hr:" options; do
   case "${options}" in
     h)
       usage
@@ -132,13 +131,16 @@ do
       ;;
     :)
       printf "Option -%s requires an argument.\\n" "${OPTARG}"
+      exit 1
       ;;
     \?)
       printf "Invalid option: -%s\\n" "${OPTARG}"
+      exit 1
       ;;
   esac
 done
 shift "$((OPTIND-1))"
+
 
 if [ ! -d "${ROOTFS_DIR}" ]; then
     printf "Given rootfs directory (%s) not found\\n" "${ROOTFS_DIR}"
