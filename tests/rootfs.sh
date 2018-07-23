@@ -5,49 +5,49 @@ set -eux
 ROOTFS_DIR="${ROOTFS_DIR:-./rootfs}"
 TEST_IMAGE_FILE_PATH="$(mktemp)"
 MTAB_FILE="/etc/mtab"
-
+RUN_SUDO=""
 QEMU_STATIC_BIN="$(command -v qemu-arm-static)"
 
 setup()
 {
     if [ ! -x "${ROOTFS_DIR}${QEMU_STATIC_BIN}" ]; then
-        cp "${QEMU_STATIC_BIN}" "${ROOTFS_DIR}/usr/bin/"
+        "${RUN_SUDO}" cp "${QEMU_STATIC_BIN}" "${ROOTFS_DIR}/usr/bin/"
     fi
 
-    mount --bind --read-only /dev "${ROOTFS_DIR}/dev" 1> /dev/null || return 1
+    "${RUN_SUDO}" mount --bind --read-only /dev "${ROOTFS_DIR}/dev" 1> /dev/null || return 1
 
     dd if=/dev/zero of="${TEST_IMAGE_FILE_PATH}" bs=32M count=4 || return 1
-    mount --bind /tmp "${ROOTFS_DIR}/tmp" 1> /dev/null || return 1
+    "${RUN_SUDO}" mount --bind /tmp "${ROOTFS_DIR}/tmp" 1> /dev/null || return 1
 
-    touch "${ROOTFS_DIR}${MTAB_FILE}" 1> /dev/null || return 1
-    mount --bind --read-only "${MTAB_FILE}" "${ROOTFS_DIR}${MTAB_FILE}"
+    "${RUN_SUDO}" touch "${ROOTFS_DIR}${MTAB_FILE}" 1> /dev/null || return 1
+    "${RUN_SUDO}" mount --bind --read-only "${MTAB_FILE}" "${ROOTFS_DIR}${MTAB_FILE}"
 }
 
 teardown()
 {
     if [ "${ROOTFS_DIR}" != "" ]; then
         if [ "$(mount | grep "${ROOTFS_DIR}/dev")" != "" ];then
-            umount "${ROOTFS_DIR}/dev" || true
+            "${RUN_SUDO}" umount "${ROOTFS_DIR}/dev" || true
         fi
 
         if [ "$(mount | grep "${ROOTFS_DIR}/tmp")" != "" ];then
-            umount "${ROOTFS_DIR}/tmp" || true
+            "${RUN_SUDO}" umount "${ROOTFS_DIR}/tmp" || true
         fi
 
         if [ "$(mount | grep "${ROOTFS_DIR}${MTAB_FILE}")" != "" ];then
-            umount "${ROOTFS_DIR}${MTAB_FILE}" || true
+            "${RUN_SUDO}" umount "${ROOTFS_DIR}${MTAB_FILE}" || true
         fi
 
-        if find "${ROOTFS_DIR}/etc" -name "$(basename "${MTAB_FILE}")" 1> /dev/null; then
-            rm -f "${ROOTFS_DIR}${MTAB_FILE}" || true
+        if "${RUN_SUDO}" find "${ROOTFS_DIR}/etc" -name "$(basename "${MTAB_FILE}")" 1> /dev/null; then
+            "${RUN_SUDO}" rm -f "${ROOTFS_DIR}${MTAB_FILE}" || true
         fi
 
         if [ -f "${ROOTFS_DIR}${QEMU_STATIC_BIN}" ]; then
-            rm -f "${ROOTFS_DIR}${QEMU_STATIC_BIN}" || true
+            "${RUN_SUDO}" rm -f "${ROOTFS_DIR}${QEMU_STATIC_BIN}" || true
         fi
     fi
 
-    if find "/tmp" -name "$(basename "${TEST_IMAGE_FILE_PATH}")" 1> /dev/null; then
+    if "${RUN_SUDO}" find "/tmp" -name "$(basename "${TEST_IMAGE_FILE_PATH}")" 1> /dev/null; then
         rm -f "${TEST_IMAGE_FILE_PATH}" || true
     fi
 }
@@ -71,37 +71,37 @@ run_test()
 test_execute_resize2fs()
 {
     mkfs.ext4 "${TEST_IMAGE_FILE_PATH}" 1> /dev/null || return 1
-    ( chroot "${ROOTFS_DIR}" /sbin/resize2fs "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
+    ( "${RUN_SUDO}" chroot "${ROOTFS_DIR}" /sbin/resize2fs "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
 }
 
 test_execute_fdisk()
 {
-    ( chroot "${ROOTFS_DIR}" /sbin/fdisk --version 1> /dev/null && return 0 ) || return 1
+    ( "${RUN_SUDO}" chroot "${ROOTFS_DIR}" /sbin/fdisk --version 1> /dev/null && return 0 ) || return 1
 }
 
 test_execute_mount()
 {
-   ( chroot "${ROOTFS_DIR}" /bin/mount --version 1> /dev/null && return 0 ) || return 1
+   ( "${RUN_SUDO}" chroot "${ROOTFS_DIR}" /bin/mount --version 1> /dev/null && return 0 ) || return 1
 }
 
 test_execute_rsync()
 {
-    ( chroot "${ROOTFS_DIR}" /usr/bin/rsync --version 1> /dev/null && return 0 ) || return 1
+    ( "${RUN_SUDO}" chroot "${ROOTFS_DIR}" /usr/bin/rsync --version 1> /dev/null && return 0 ) || return 1
 }
 
 test_execute_busybox()
 {
-    ( chroot "${ROOTFS_DIR}" /bin/busybox --help 1> /dev/null && return 0 ) || return 1
+    ( "${RUN_SUDO}" chroot "${ROOTFS_DIR}" /bin/busybox --help 1> /dev/null && return 0 ) || return 1
 }
 
 test_execute_mkfs_ext4()
 {
-    ( chroot "${ROOTFS_DIR}" /sbin/mkfs.ext4 "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
+    ( "${RUN_SUDO}" chroot "${ROOTFS_DIR}" /sbin/mkfs.ext4 "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
 }
 
 test_execute_mkfs_f2fs()
 {
-    ( chroot "${ROOTFS_DIR}" /sbin/mkfs.f2fs "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
+    ( "${RUN_SUDO}" chroot "${ROOTFS_DIR}" /sbin/mkfs.f2fs "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
 }
 
 usage()
@@ -115,9 +115,7 @@ EOT
 }
 
 if [ "$(id -u)" != "0" ]; then
-    printf "Make sure this script is run with root permissions\\n"
-    usage
-    exit 1
+    RUN_SUDO="sudo"
 fi
 
 while getopts ":hr:" options; do

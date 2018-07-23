@@ -7,7 +7,10 @@ RESULT=0
 check_precondition()
 {
     local CMD="${1}"
-    command -V "${CMD}" || (printf "Missing: %s\\n" "${CMD}"; RESULT=1;)
+    command -V "${CMD}" ||
+    {
+        printf "Missing: %s\\n" "${CMD}"; RESULT=1;
+    }
 }
 
 printf "Checking build environment preconditions:\\n"

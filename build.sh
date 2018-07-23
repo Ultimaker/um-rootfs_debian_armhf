@@ -8,6 +8,7 @@ BUILD_DIR="${CUR_DIR}/.build_${ARCH}"
 DEBIAN_VERSION="${DEBIAN_VERSION:-jessie}"
 ROOTFS_ARCHIVE="rootfs.tar.xz"
 ROOTFS_DIR="${BUILD_DIR}/rootfs"
+RUN_SUDO=""
 QEMU_STATIC_BIN="$(command -v qemu-arm-static)"
 
 
@@ -18,7 +19,7 @@ cleanup()
 
     if [ "${mount_points}" = "" ]; then
         if [ -d "${BUILD_DIR}" ]; then
-            rm -rf "${BUILD_DIR}"
+            "${RUN_SUDO}" rm -rf "${BUILD_DIR}"
         fi
     else
         echo "Cannot delete ${ROOTFS_DIR}, unmount the following mount points first:"
@@ -40,14 +41,14 @@ prepare_bootstrap()
 un_prepare_bootstrap()
 {
     if [ -f "${ROOTFS_DIR}${QEMU_STATIC_BIN}" ]; then
-        rm  -f "${ROOTFS_DIR}${QEMU_STATIC_BIN}"
+        "${RUN_SUDO}" rm  -f "${ROOTFS_DIR}${QEMU_STATIC_BIN}"
     fi
 }
 
 bootstrap_rootfs()
 {
     printf "Bootstrapping rootfs to %s\\n" "${ROOTFS_DIR}"
-    debootstrap \
+    "${RUN_SUDO}" debootstrap \
         --arch=armhf \
         --variant=minbase \
         --include=f2fs-tools,mtd-utils,busybox,udisks2,rsync \
@@ -62,11 +63,11 @@ bootstrap_rootfs()
 compress_rootfs()
 {
     if [ -f "${BUILD_DIR}/${ROOTFS_ARCHIVE}" ]; then
-        rm -f "${BUILD_DIR}/${ROOTFS_ARCHIVE}"
+        "${RUN_SUDO}" rm -f "${BUILD_DIR}/${ROOTFS_ARCHIVE}"
     fi
 
     printf "Compressing rootfs\\n"
-    tar -cJf "${BUILD_DIR}/${ROOTFS_ARCHIVE}" -C "${ROOTFS_DIR}" .
+    "${RUN_SUDO}" tar -cJf "${BUILD_DIR}/${ROOTFS_ARCHIVE}" -C "${ROOTFS_DIR}" .
     printf "Created %s\\n" "${ROOTFS_ARCHIVE}"
 }
 
@@ -81,9 +82,7 @@ EOT
 }
 
 if [ "$(id -u)" != "0" ]; then
-    printf "Make sure this script is run with root permissions\\n"
-    usage
-    exit 1
+    RUN_SUDO="sudo"
 fi
 
 while getopts ":hc" options; do
@@ -98,9 +97,11 @@ while getopts ":hc" options; do
             ;;
         :)
             printf "Option -%s requires an argument.\\n" "${OPTARG}"
+            exit 1
             ;;
         ?)
             printf "Invalid option: -%s\\n" "${OPTARG}"
+            exit 1
             ;;
     esac
 done
