@@ -55,16 +55,17 @@ teardown()
 run_test()
 {
     if ! setup; then
-        printf "Cannot run tests, unable to complete test setup\\n"
+        echo "Cannot run tests, unable to complete test setup."
         teardown
         exit 1
     fi
 
-    if "$1"; then
-        printf "Run: %s - OK\\n" "${1}"
+    if "${1}"; then
+        echo "Run: ${1} - OK"
     else
-        printf "Run: %s - ERROR\\n" "${1}"
+        printf "Run: ${1} - ERROR"
     fi
+
     teardown
 }
 
@@ -115,14 +116,13 @@ EOT
 }
 
 if [ "$(id -u)" != "0" ]; then
-    printf "Make sure this script is run with root permissions\\n"
+    echo "Make sure this script is run with root permissions."
     usage
     exit 1
 fi
 
-while getopts ":hr:" options
-do
-  case "${options}" in
+while getopts ":hr:" options; do
+    case "${options}" in
     h)
       usage
       exit 0
@@ -131,20 +131,21 @@ do
       ROOTFS_DIR="${OPTARG}"
       ;;
     :)
-      printf "Option -%s requires an argument.\\n" "${OPTARG}"
+      echo "Option -${OPTARG} requires an argument."
       ;;
-    \?)
-      printf "Invalid option: -%s\\n" "${OPTARG}"
+    ?)
+      echo "Invalid option: -${OPTARG}."
       ;;
-  esac
+    esac
 done
-shift "$((OPTIND-1))"
+shift "$((OPTIND - 1))"
 
 if [ ! -d "${ROOTFS_DIR}" ]; then
-    printf "Given rootfs directory (%s) not found\\n" "${ROOTFS_DIR}"
+    echo "Given rootfs directory (${ROOTFS_DIR}) not found."
     usage
     exit 1
 fi
+
 
 run_test test_execute_resize2fs
 run_test test_execute_fdisk
