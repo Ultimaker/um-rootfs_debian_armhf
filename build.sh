@@ -86,7 +86,7 @@ while getopts ":hc" options; do
 done
 shift "$((OPTIND - 1))"
 
-if [ "$(id -u)" != "0" ]; then
+if [ "$(id -u)" -ne 0 ]; then
     echo "Warning: this script requires root permissions."
     echo "Run this script again with 'sudo ${0}'."
     echo "See ${0} -h for more info."
