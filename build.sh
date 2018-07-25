@@ -7,7 +7,7 @@ CUR_DIR="$(pwd)"
 BUILD_DIR="${CUR_DIR}/.build_${ARCH}"
 ALPINE_VERSION="${ALPINE_VERSION:-latest-stable}"
 ALPINE_REPO="${ALPINE_REPO:-http://dl-cdn.alpinelinux.org/alpine}"
-ROOTFS_ARCHIVE="rootfs.tar.xz"
+ROOTFS_ARCHIVE="rootfs.xz.img"
 ROOTFS_DIR="${BUILD_DIR}/rootfs"
 
 
@@ -45,12 +45,12 @@ bootstrap_rootfs()
 
 compress_rootfs()
 {
-    if [ -f "${BUILD_DIR}/${ROOTFS_ARCHIVE}" ]; then
-        rm -f "${BUILD_DIR}/${ROOTFS_ARCHIVE}"
+    if [ -f "${ROOTFS_ARCHIVE}" ]; then
+        rm -f "${ROOTFS_ARCHIVE}"
     fi
 
     echo "Compressing rootfs"
-    tar -cJf "${BUILD_DIR}/${ROOTFS_ARCHIVE}" -C "${ROOTFS_DIR}" .
+    mksquashfs "${ROOTFS_DIR}" "${ROOTFS_ARCHIVE}" -comp xz
     echo "Created ${ROOTFS_ARCHIVE}."
 }
 
