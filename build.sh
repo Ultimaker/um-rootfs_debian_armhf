@@ -13,7 +13,6 @@ QEMU_STATIC_BIN="$(command -v qemu-arm-static)"
 
 cleanup()
 {
-    local mount_points
     mount_points="$(mount | grep "${ROOTFS_DIR}")"
 
     if [ "${mount_points}" = "" ]; then
