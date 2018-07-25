@@ -77,9 +77,11 @@ while getopts ":hc" options; do
         ;;
     :)
         echo "Option -${OPTARG} requires an argument."
+        exit 1
         ;;
     ?)
         echo "Invalid option: -${OPTARG}"
+        exit 1
         ;;
     esac
 done
