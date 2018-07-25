@@ -5,7 +5,8 @@ set -eu
 ARCH="${ARCH:-armhf}"
 CUR_DIR="$(pwd)"
 BUILD_DIR="${CUR_DIR}/.build_${ARCH}"
-DEBIAN_VERSION="${DEBIAN_VERSION:-jessie}"
+ALPINE_VERSION="${ALPINE_VERSION:-latest-stable}"
+ALPINE_REPO="${ALPINE_REPO:-http://dl-cdn.alpinelinux.org/alpine}"
 ROOTFS_ARCHIVE="rootfs.tar.xz"
 ROOTFS_DIR="${BUILD_DIR}/rootfs"
 QEMU_STATIC_BIN="$(command -v qemu-arm-static)"
@@ -47,13 +48,18 @@ un_prepare_bootstrap()
 
 bootstrap_rootfs()
 {
-
-    printf "Bootstrapping rootfs to %s\\n" "${ROOTFS_DIR}"
-    debootstrap \
-        --arch=armhf \
-        --variant=minbase \
-        --include=f2fs-tools,mtd-utils,busybox,udisks2,rsync \
-        "${DEBIAN_VERSION}" "${ROOTFS_DIR}" http://ftp.debian.com/debian
+    echo "Bootstrapping Alpine Linux rootfs in to ${ROOTFS_DIR}"
+    mkdir -p "${ROOTFS_DIR}/etc/apk"
+    echo "${ALPINE_REPO}/${ALPINE_VERSION}/main" > "${ROOTFS_DIR}/etc/apk/repositories"
+    # Install rootfs with base applications
+    apk --root "${ROOTFS_DIR}" --update-cache \
+       add --allow-untrusted --initdb --arch "${ARCH}" \
+       busybox e2fsprogs-extra f2fs-tools rsync
+    # Add baselayout etc files
+    echo "Adding baselayout"
+    apk --root "${ROOTFS_DIR}" \
+       fetch --allow-untrusted --arch "${ARCH}" --stdout alpine-base | tar -xvz -C "${ROOTFS_DIR}" etc
+    rm -f "${ROOTFS_DIR}/var/cache/apk"/*
 }
 
 #strip_rootfs()
