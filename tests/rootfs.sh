@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -eux
+set -eu
 
 ROOTFS_DIR="${ROOTFS_DIR:-./rootfs}"
 TEST_IMAGE_FILE_PATH="$(mktemp)"
