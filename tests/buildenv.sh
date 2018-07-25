@@ -13,7 +13,7 @@ check_precondition()
     }
 }
 
-printf "Checking build environment preconditions:\\n"
+echo "Checking build environment preconditions:"
 
 check_precondition debootstrap
 check_precondition debootstrap
