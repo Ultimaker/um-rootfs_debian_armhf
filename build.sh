@@ -87,8 +87,9 @@ done
 shift "$((OPTIND - 1))"
 
 if [ "$(id -u)" != "0" ]; then
-    printf "Make sure this script is run with root permissions\\n"
-    usage
+    echo "Warning: this script requires root permissions."
+    echo "Run this script again with 'sudo ${0}'."
+    echo "See ${0} -h for more info."
     exit 1
 fi
 
