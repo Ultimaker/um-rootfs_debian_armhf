@@ -13,16 +13,18 @@ QEMU_STATIC_BIN="$(command -v qemu-arm-static)"
 
 cleanup()
 {
-    mount_points="$(mount | grep "${ROOTFS_DIR}")"
+    mount_points="$(grep "${ROOTFS_DIR}" /proc/mounts || true)"
 
-    if [ "${mount_points}" = "" ]; then
-        if [ -d "${BUILD_DIR}" ]; then
-            rm -rf "${BUILD_DIR}"
-        fi
-    else
-        echo "Cannot delete ${ROOTFS_DIR}, unmount the following mount points first:"
-        echo "${mount_points}"
+    if [ ! -d "${BUILD_DIR}" ]; then
+        return
     fi
+    if [ -n "${mount_points}" ]; then
+        echo "Cannot delete '${BUILD_DIR}', unmount the following mount points first:"
+        echo "${mount_points}"
+        exit 1
+    fi
+
+    rm -rf "${BUILD_DIR}"
 }
 
 prepare_bootstrap()
