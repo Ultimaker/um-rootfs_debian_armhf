@@ -1,16 +1,13 @@
 #!/bin/sh
 
-set -eux
+set -eu
 
 RESULT=0
 
 check_precondition()
 {
     local CMD="${1}"
-    command -V "${CMD}" || {
-        printf "Missing: %s\\n" "${CMD}"
-        RESULT=1
-    }
+    command -V "${CMD}" || RESULT=1
 }
 
 echo "Checking build environment preconditions:"
