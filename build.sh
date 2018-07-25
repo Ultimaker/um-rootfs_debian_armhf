@@ -9,7 +9,6 @@ ALPINE_VERSION="${ALPINE_VERSION:-latest-stable}"
 ALPINE_REPO="${ALPINE_REPO:-http://dl-cdn.alpinelinux.org/alpine}"
 ROOTFS_ARCHIVE="rootfs.xz.img"
 ROOTFS_DIR="${BUILD_DIR}/rootfs"
-RUN_SUDO=""
 
 
 cleanup()
@@ -25,7 +24,7 @@ cleanup()
         exit 1
     fi
 
-    "${RUN_SUDO}"rm -rf "${BUILD_DIR}"
+    rm -rf "${BUILD_DIR}"
 }
 
 bootstrap_rootfs()
@@ -34,24 +33,24 @@ bootstrap_rootfs()
     mkdir -p "${ROOTFS_DIR}/etc/apk"
     echo "${ALPINE_REPO}/${ALPINE_VERSION}/main" > "${ROOTFS_DIR}/etc/apk/repositories"
     # Install rootfs with base applications
-    "${RUN_SUDO}"apk --root "${ROOTFS_DIR}" --update-cache \
+    apk --root "${ROOTFS_DIR}" --update-cache \
        add --allow-untrusted --initdb --arch "${ARCH}" \
        busybox e2fsprogs-extra f2fs-tools rsync
     # Add baselayout etc files
     echo "Adding baselayout"
-    "${RUN_SUDO}"apk --root "${ROOTFS_DIR}" \
+    apk --root "${ROOTFS_DIR}" \
        fetch --allow-untrusted --arch "${ARCH}" --stdout alpine-base | tar -xvz -C "${ROOTFS_DIR}" etc
-    "${RUN_SUDO}"rm -f "${ROOTFS_DIR}/var/cache/apk"/*
+    rm -f "${ROOTFS_DIR}/var/cache/apk"/*
 }
 
 compress_rootfs()
 {
     if [ -f "${ROOTFS_ARCHIVE}" ]; then
-        "${RUN_SUDO}"rm -f "${ROOTFS_ARCHIVE}"
+        rm -f "${ROOTFS_ARCHIVE}"
     fi
 
     echo "Compressing rootfs"
-    "${RUN_SUDO}"mksquashfs "${ROOTFS_DIR}" "${ROOTFS_ARCHIVE}" -comp xz
+    mksquashfs "${ROOTFS_DIR}" "${ROOTFS_ARCHIVE}" -comp xz
     echo "Created ${ROOTFS_ARCHIVE}."
 }
 
@@ -88,7 +87,9 @@ done
 shift "$((OPTIND - 1))"
 
 if [ "$(id -u)" != "0" ]; then
-    RUN_SUDO="sudo"
+    printf "Make sure this script is run with root permissions\\n"
+    usage
+    exit 1
 fi
 
 
