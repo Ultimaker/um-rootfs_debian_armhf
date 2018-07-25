@@ -49,9 +49,9 @@ compress_rootfs()
         rm -f "${BUILD_DIR}/${ROOTFS_ARCHIVE}"
     fi
 
-    printf "Compressing rootfs\\n"
+    echo "Compressing rootfs"
     tar -cJf "${BUILD_DIR}/${ROOTFS_ARCHIVE}" -C "${ROOTFS_DIR}" .
-    printf "Created %s\\n" "${ROOTFS_ARCHIVE}"
+    echo "Created ${ROOTFS_ARCHIVE}."
 }
 
 usage()
