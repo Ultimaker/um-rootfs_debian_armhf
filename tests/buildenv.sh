@@ -2,6 +2,8 @@
 
 set -eu
 
+PRECONDITIONS="apk cpio find git xz"
+
 RESULT=0
 
 check_precondition()
@@ -12,12 +14,8 @@ check_precondition()
 
 echo "Checking build environment preconditions:"
 
-check_precondition debootstrap
-check_precondition debootstrap
-check_precondition qemu-arm-static
-check_precondition dd
-check_precondition mkfs.ext4
-check_precondition touch
-check_precondition chroot
+for pkg in ${PRECONDITIONS}; do
+    check_precondition "${pkg}"
+done
 
 exit "${RESULT}"
