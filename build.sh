@@ -9,7 +9,6 @@ ALPINE_VERSION="${ALPINE_VERSION:-latest-stable}"
 ALPINE_REPO="${ALPINE_REPO:-http://dl-cdn.alpinelinux.org/alpine}"
 ROOTFS_ARCHIVE="rootfs.tar.xz"
 ROOTFS_DIR="${BUILD_DIR}/rootfs"
-QEMU_STATIC_BIN="$(command -v qemu-arm-static)"
 
 
 cleanup()
@@ -28,24 +27,6 @@ cleanup()
     rm -rf "${BUILD_DIR}"
 }
 
-prepare_bootstrap()
-{
-    if [ ! -d "${ROOTFS_DIR}/usr/bin" ]; then
-        mkdir -p "${ROOTFS_DIR}/usr/bin"
-    fi
-
-    if [ ! -x "${ROOTFS_DIR}${QEMU_STATIC_BIN}" ]; then
-        cp "${QEMU_STATIC_BIN}" "${ROOTFS_DIR}/usr/bin/"
-    fi
-}
-
-un_prepare_bootstrap()
-{
-    if [ -f "${ROOTFS_DIR}${QEMU_STATIC_BIN}" ]; then
-        rm  -f "${ROOTFS_DIR}${QEMU_STATIC_BIN}"
-    fi
-}
-
 bootstrap_rootfs()
 {
     echo "Bootstrapping Alpine Linux rootfs in to ${ROOTFS_DIR}"
@@ -61,11 +42,6 @@ bootstrap_rootfs()
        fetch --allow-untrusted --arch "${ARCH}" --stdout alpine-base | tar -xvz -C "${ROOTFS_DIR}" etc
     rm -f "${ROOTFS_DIR}/var/cache/apk"/*
 }
-
-#strip_rootfs()
-#{
-#   TODO: Strip even more see issue EMP-324 Reduce rootfs size
-#}
 
 compress_rootfs()
 {
@@ -116,10 +92,7 @@ shift "$((OPTIND - 1))"
 
 
 cleanup
-prepare_bootstrap
 bootstrap_rootfs
-un_prepare_bootstrap
-#strip_rootfs
 compress_rootfs
 
 exit 0
