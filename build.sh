@@ -64,12 +64,6 @@ cat <<-EOT
 EOT
 }
 
-if [ "$(id -u)" != "0" ]; then
-    printf "Make sure this script is run with root permissions\\n"
-    usage
-    exit 1
-fi
-
 while getopts ":hc" options; do
     case "${options}" in
     c)
@@ -89,6 +83,12 @@ while getopts ":hc" options; do
     esac
 done
 shift "$((OPTIND - 1))"
+
+if [ "$(id -u)" != "0" ]; then
+    printf "Make sure this script is run with root permissions\\n"
+    usage
+    exit 1
+fi
 
 
 cleanup
