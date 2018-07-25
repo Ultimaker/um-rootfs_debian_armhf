@@ -6,7 +6,7 @@ RESULT=0
 
 check_precondition()
 {
-    local CMD="${1}"
+    CMD="${1}"
     command -V "${CMD}" || RESULT=1
 }
 
