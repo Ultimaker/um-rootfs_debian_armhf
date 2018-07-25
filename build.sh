@@ -74,8 +74,8 @@ usage()
 {
 cat <<-EOT
     Usage: ${0} [OPTIONS]
-        -c   Cleanup, after a run you have the possibility to get the artifact and then cleanup
-        -h   Print usage
+        -c   Explicitly cleanup the build directory
+        -h   Print this usage
     NOTE: This script requires root permissions to run.
 EOT
 }
@@ -88,20 +88,20 @@ fi
 
 while getopts ":hc" options; do
     case "${options}" in
-        c)
-            cleanup
-            exit 0
-            ;;
-        h)
-            usage
-            exit 0
-            ;;
-        :)
-            printf "Option -%s requires an argument.\\n" "${OPTARG}"
-            ;;
-        ?)
-            printf "Invalid option: -%s\\n" "${OPTARG}"
-            ;;
+    c)
+        cleanup
+        exit 0
+        ;;
+    h)
+        usage
+        exit 0
+        ;;
+    :)
+        echo "Option -${OPTARG} requires an argument."
+        ;;
+    ?)
+        echo "Invalid option: -${OPTARG}"
+        ;;
     esac
 done
 shift "$((OPTIND - 1))"
