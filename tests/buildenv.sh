@@ -18,4 +18,11 @@ for pkg in ${PRECONDITIONS}; do
     check_precondition "${pkg}"
 done
 
-exit "${RESULT}"
+if [ "${RESULT}" -ne 0 ]; then
+	echo "ERROR: Missing preconditions, cannot continue."
+	exit 1
+fi
+
+echo "All Ok"
+
+exit 0
