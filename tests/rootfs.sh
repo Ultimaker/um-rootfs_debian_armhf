@@ -72,15 +72,30 @@ run_test()
     teardown
 }
 
+test_execute_busybox()
+{
+    ( chroot "${rootfs_dir}" /bin/busybox --help 1> /dev/null && return 0 ) || return 1
+}
+
+test_execute_fdisk()
+{
+    ( chroot "${rootfs_dir}" /sbin/fdisk --version 1> /dev/null && return 0 ) || return 1
+}
+
+test_execute_mkfs_ext4()
+{
+    ( chroot "${rootfs_dir}" /sbin/mkfs.ext4 "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
+}
+
 test_execute_resize2fs()
 {
     mkfs.ext4 "${TEST_IMAGE_FILE_PATH}" 1> /dev/null || return 1
     ( chroot "${rootfs_dir}" /sbin/resize2fs "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
 }
 
-test_execute_fdisk()
+test_execute_mkfs_f2fs()
 {
-    ( chroot "${rootfs_dir}" /sbin/fdisk --version 1> /dev/null && return 0 ) || return 1
+    ( chroot "${rootfs_dir}" /sbin/mkfs.f2fs "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
 }
 
 test_execute_mount()
@@ -91,21 +106,6 @@ test_execute_mount()
 test_execute_rsync()
 {
     ( chroot "${rootfs_dir}" /usr/bin/rsync --version 1> /dev/null && return 0 ) || return 1
-}
-
-test_execute_busybox()
-{
-    ( chroot "${rootfs_dir}" /bin/busybox --help 1> /dev/null && return 0 ) || return 1
-}
-
-test_execute_mkfs_ext4()
-{
-    ( chroot "${rootfs_dir}" /sbin/mkfs.ext4 "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
-}
-
-test_execute_mkfs_f2fs()
-{
-    ( chroot "${rootfs_dir}" /sbin/mkfs.f2fs "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
 }
 
 usage()
@@ -156,13 +156,13 @@ if [ ! -r "${ROOTFS_IMG}" ]; then
 fi
 
 
-run_test test_execute_resize2fs
+run_test test_execute_busybox
 run_test test_execute_fdisk
+run_test test_execute_mkfs_ext4
+run_test test_execute_resize2fs
+run_test test_execute_mkfs_f2fs
 run_test test_execute_mount
 run_test test_execute_rsync
-run_test test_execute_busybox
-run_test test_execute_mkfs_ext4
-run_test test_execute_mkfs_f2fs
 
 if [ "${RESULT}" -ne 0 ]; then
     echo "ERROR: There where failures testing '${ROOTFS_IMG}'."
