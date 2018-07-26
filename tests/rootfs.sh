@@ -79,7 +79,7 @@ test_execute_busybox()
 
 test_execute_fdisk()
 {
-    ( chroot "${rootfs_dir}" /sbin/fdisk --version 1> /dev/null && return 0 ) || return 1
+    ( chroot "${rootfs_dir}" /sbin/fdisk -l "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
 }
 
 test_execute_mkfs_ext4()
@@ -90,12 +90,12 @@ test_execute_mkfs_ext4()
 test_execute_resize2fs()
 {
     test_execute_mkfs_ext4
-    ( chroot "${rootfs_dir}" /sbin/resize2fs "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
+    ( chroot "${rootfs_dir}" /usr/sbin/resize2fs "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
 }
 
 test_execute_mkfs_f2fs()
 {
-    ( chroot "${rootfs_dir}" /sbin/mkfs.f2fs "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
+    ( chroot "${rootfs_dir}" /usr/sbin/mkfs.f2fs "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
 }
 
 test_execute_mount()
