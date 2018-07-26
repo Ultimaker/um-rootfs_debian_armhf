@@ -55,10 +55,35 @@ bootstrap_rootfs()
         "${DEBIAN_VERSION}" "${ROOTFS_DIR}" http://ftp.debian.com/debian
 }
 
-#strip_rootfs()
-#{
-#   TODO: Strip even more see issue EMP-324 Reduce rootfs size
-#}
+strip_rootfs()
+{
+    set -f
+
+    excludes=$(grep -vE '^#|^$' ".slimify-excludes" | sort -u)
+    includes=$(grep -vE '^#|^$' ".slimify-includes" | sort -u)
+
+    ## This is where the magic happens; for all lines, replace '\n' with ' -o -path '.
+    excludePaths=$(echo "${excludes}" | sed -e ':a' -e 'N' -e '$!ba' -e 's#\n# -o -path #g')
+    includePaths=$(echo "${includes}" | sed -e ':a' -e 'N' -e '$!ba' -e 's#\n# -o -path #g')
+
+    "${RUN_SUDO}" chroot "${ROOTFS_DIR}" /usr/bin/find / \
+        -depth -mindepth 1 \
+        \( -path ${excludePaths} \) \
+        ! \( -path ${includePaths} \) \
+        -not \( -type d -o -type l \) \
+        -exec rm -f '{}' ';'
+
+    while [ "$("${RUN_SUDO}" chroot "${ROOTFS_DIR}" /usr/bin/find / \
+                -depth -mindepth 1 \
+                \( -path ${excludePaths} \) \
+                \( -empty -o -xtype l \) \
+                -exec rm -rf '{}' ';' \
+                -printf '.' \
+                | wc -c
+            )" -gt 0 ]; do true; done
+
+    set +f
+}
 
 compress_rootfs()
 {
@@ -111,8 +136,8 @@ shift "$((OPTIND - 1))"
 cleanup
 prepare_bootstrap
 bootstrap_rootfs
+strip_rootfs
 un_prepare_bootstrap
-#strip_rootfs
 compress_rootfs
 
 exit 0
