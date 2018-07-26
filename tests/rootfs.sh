@@ -123,12 +123,6 @@ cat <<-EOT
 EOT
 }
 
-if [ "$(id -u)" != "0" ]; then
-    echo "Make sure this script is run with root permissions."
-    usage
-    exit 1
-fi
-
 trap teardown EXIT
 
 while getopts ":h" options; do
@@ -158,6 +152,13 @@ ROOTFS_IMG="${*}"
 if [ ! -r "${ROOTFS_IMG}" ]; then
     echo "Given rootfs image '${ROOTFS_IMG}' not found."
     usage
+    exit 1
+fi
+
+if [ "$(id -u)" -ne 0 ]; then
+    echo "Warning: this script requires root permissions."
+    echo "Run this script again with 'sudo ${0}'."
+    echo "See ${0} -h for more info."
     exit 1
 fi
 
