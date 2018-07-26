@@ -6,12 +6,12 @@ ROOTFS_DIR="${ROOTFS_DIR:-./rootfs}"
 TEST_IMAGE_FILE_PATH="$(mktemp)"
 MTAB_FILE="/etc/mtab"
 
-QEMU_STATIC_BIN="$(command -v qemu-arm-static)"
+QEMU_ARM_BIN="$(command -v qemu-arm-static || command -v qemu-arm)"
 
 setup()
 {
-    if [ ! -x "${ROOTFS_DIR}${QEMU_STATIC_BIN}" ]; then
-        cp "${QEMU_STATIC_BIN}" "${ROOTFS_DIR}/usr/bin/"
+    if [ ! -x "${ROOTFS_DIR}${QEMU_ARM_BIN}" ]; then
+        cp "${QEMU_ARM_BIN}" "${ROOTFS_DIR}/usr/bin/"
     fi
 
     mount --bind --read-only /dev "${ROOTFS_DIR}/dev" 1> /dev/null || return 1
@@ -42,8 +42,8 @@ teardown()
             rm -f "${ROOTFS_DIR}${MTAB_FILE}" || true
         fi
 
-        if [ -f "${ROOTFS_DIR}${QEMU_STATIC_BIN}" ]; then
-            rm -f "${ROOTFS_DIR}${QEMU_STATIC_BIN}" || true
+        if [ -f "${ROOTFS_DIR}${QEMU_ARM_BIN}" ]; then
+            rm -f "${ROOTFS_DIR}${QEMU_ARM_BIN}" || true
         fi
     fi
 
