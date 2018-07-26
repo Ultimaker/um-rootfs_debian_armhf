@@ -75,6 +75,16 @@ push build environment:
   - docker tag  "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA" "$CI_REGISTRY_IMAGE:latest"
   - docker push "$CI_REGISTRY_IMAGE:latest"
 
+cleanup build environment:
+  <<: *environment_common
+  stage: cleanup
+  when: always
+  script:
+  - |
+    if docker inspect --type image "$CI_COMMIT_SHA:$CI_PIPELINE_ID" 1> /dev/null; then
+      docker rmi "$CI_COMMIT_SHA:$CI_PIPELINE_ID"
+    fi
+
 # Package generation
 # ==================
 .build pkg common: &pkg_common
@@ -99,13 +109,3 @@ test artifact:
   <<: *environment_common
   script:
     - docker run --rm -w /tests "$CI_COMMIT_SHA:$CI_PIPELINE_ID" ./rootfs.sh -r /build/rootfs
-
-cleanup build environment:
-  <<: *environment_common
-  stage: cleanup
-  when: always
-  script:
-  - |
-    if docker inspect --type image "$CI_COMMIT_SHA:$CI_PIPELINE_ID" 1> /dev/null; then
-      docker rmi "$CI_COMMIT_SHA:$CI_PIPELINE_ID"
-    fi
