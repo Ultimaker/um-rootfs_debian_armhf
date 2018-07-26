@@ -89,7 +89,7 @@ test_execute_mkfs_ext4()
 
 test_execute_resize2fs()
 {
-    mkfs.ext4 "${TEST_IMAGE_FILE_PATH}" 1> /dev/null || return 1
+    test_execute_mkfs_ext4
     ( chroot "${rootfs_dir}" /sbin/resize2fs "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
 }
 
