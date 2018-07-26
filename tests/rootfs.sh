@@ -117,9 +117,9 @@ test_execute_rsync()
 usage()
 {
 cat <<-EOT
-    Usage:   "${0}" [OPTIONS] <file.img>
-        -h   Print usage
-    NOTE: This script requires root permissions to run.
+	Usage:   "${0}" [OPTIONS] <file.img>
+	    -h   Print usage
+	NOTE: This script requires root permissions to run.
 EOT
 }
 
