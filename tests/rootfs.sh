@@ -60,11 +60,14 @@ run_test()
         exit 1
     fi
 
+    echo "Run: ${1}"
     if "${1}"; then
-        echo "Run: ${1} - OK"
+        echo "Result - OK"
     else
-        printf "Run: ${1} - ERROR"
+        echo "Result - ERROR"
+	RESULT=1
     fi
+    printf '\n'
 
     teardown
 }
