@@ -104,8 +104,10 @@ build package:
     - ./rootfs*.xz.img
     expire_in: 3 days
 
-test artifact:
+test package:
   stage: test
-  <<: *environment_common
+  <<: *pkg_common
+  dependencies:
+  - build package
   script:
-    - docker run --rm -w /tests "$CI_COMMIT_SHA:$CI_PIPELINE_ID" ./rootfs.sh -r /build/rootfs
+  - ./tests/rootfs.sh rootfs*.xz.img
