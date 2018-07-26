@@ -58,11 +58,7 @@ teardown()
 
 run_test()
 {
-    if ! setup; then
-        echo "Cannot run tests, unable to complete test setup."
-        teardown
-        exit 1
-    fi
+    setup
 
     echo "Run: ${1}"
     if "${1}"; then
