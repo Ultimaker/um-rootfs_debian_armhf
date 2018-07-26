@@ -19,7 +19,6 @@ stages:
 # ==========
 .parameters common: &parameters_common
   tags:
-  - embedded
   - docker
 
 .shell linting common: &shell_linting_common
