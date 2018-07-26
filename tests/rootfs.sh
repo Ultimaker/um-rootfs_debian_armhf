@@ -2,54 +2,58 @@
 
 set -eu
 
-ROOTFS_DIR="${ROOTFS_DIR:-./rootfs}"
-TEST_IMAGE_FILE_PATH="$(mktemp)"
-MTAB_FILE="/etc/mtab"
+TEST_IMAGE_FILE_PATH="/tmp/test_file.img"
 
 QEMU_ARM_BIN="$(command -v qemu-arm-static || command -v qemu-arm)"
 
+overlayfs_dir=""
+rootfs_dir=""
+
+RESULT=0
+
 setup()
 {
-    if [ ! -x "${ROOTFS_DIR}${QEMU_ARM_BIN}" ]; then
-        cp "${QEMU_ARM_BIN}" "${ROOTFS_DIR}/usr/bin/"
-    fi
+    overlayfs_dir="$(mktemp -d)"
+    rootfs_dir="$(mktemp -d)"
 
-    mount --bind --read-only /dev "${ROOTFS_DIR}/dev" 1> /dev/null || return 1
+    mount -t tmpfs none "${overlayfs_dir}"
+    mkdir "${overlayfs_dir}/rom"
+    mkdir "${overlayfs_dir}/up"
+    mkdir "${overlayfs_dir}/work"
 
-    dd if=/dev/zero of="${TEST_IMAGE_FILE_PATH}" bs=32M count=4 || return 1
-    mount --bind /tmp "${ROOTFS_DIR}/tmp" 1> /dev/null || return 1
+    mount "${ROOTFS_IMG}" "${overlayfs_dir}/rom"
+    mount -t overlay overlay \
+          -o "lowerdir=${overlayfs_dir}/rom,upperdir=${overlayfs_dir}/up,workdir=${overlayfs_dir}/work" \
+          "${rootfs_dir}"
 
-    touch "${ROOTFS_DIR}${MTAB_FILE}" 1> /dev/null || return 1
-    mount --bind --read-only "${MTAB_FILE}" "${ROOTFS_DIR}${MTAB_FILE}"
+    cp "${QEMU_ARM_BIN}" "${rootfs_dir}/usr/bin/"
+
+    mount --bind /proc "${rootfs_dir}/proc" 1> /dev/null
+    ln -s ../proc/self/mounts "${rootfs_dir}/etc/mtab"
+
+    dd if=/dev/zero of="${rootfs_dir}/${TEST_IMAGE_FILE_PATH}" bs=32M count=4 2> /dev/null
 }
 
 teardown()
 {
-    if [ "${ROOTFS_DIR}" != "" ]; then
-        if [ "$(mount | grep "${ROOTFS_DIR}/dev")" != "" ];then
-            umount "${ROOTFS_DIR}/dev" || true
-        fi
+    MOUNTS="${rootfs_dir} ${overlayfs_dir}/rom ${overlayfs_dir}"
 
-        if [ "$(mount | grep "${ROOTFS_DIR}/tmp")" != "" ];then
-            umount "${ROOTFS_DIR}/tmp" || true
-        fi
-
-        if [ "$(mount | grep "${ROOTFS_DIR}${MTAB_FILE}")" != "" ];then
-            umount "${ROOTFS_DIR}${MTAB_FILE}" || true
-        fi
-
-        if find "${ROOTFS_DIR}/etc" -name "$(basename "${MTAB_FILE}")" 1> /dev/null; then
-            rm -f "${ROOTFS_DIR}${MTAB_FILE}" || true
-        fi
-
-        if [ -f "${ROOTFS_DIR}${QEMU_ARM_BIN}" ]; then
-            rm -f "${ROOTFS_DIR}${QEMU_ARM_BIN}" || true
-        fi
+    if [ ! -d "${rootfs_dir}" ]; then
+        return
     fi
 
-    if find "/tmp" -name "$(basename "${TEST_IMAGE_FILE_PATH}")" 1> /dev/null; then
-        rm -f "${TEST_IMAGE_FILE_PATH}" || true
+    if grep -q "${rootfs_dir}/proc" /proc/mounts; then
+        umount "${rootfs_dir}/proc" || RESULT=1
     fi
+
+    for mount in ${MOUNTS}; do
+        if grep -q "${mount}" /proc/mounts; then
+            umount "${mount}" || RESULT=1
+        fi
+        if [ -d "${mount}" ]; then
+            rmdir "${mount}" || RESULT=1
+        fi
+    done
 }
 
 run_test()
@@ -75,37 +79,37 @@ run_test()
 test_execute_resize2fs()
 {
     mkfs.ext4 "${TEST_IMAGE_FILE_PATH}" 1> /dev/null || return 1
-    ( chroot "${ROOTFS_DIR}" /sbin/resize2fs "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
+    ( chroot "${rootfs_dir}" /sbin/resize2fs "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
 }
 
 test_execute_fdisk()
 {
-    ( chroot "${ROOTFS_DIR}" /sbin/fdisk --version 1> /dev/null && return 0 ) || return 1
+    ( chroot "${rootfs_dir}" /sbin/fdisk --version 1> /dev/null && return 0 ) || return 1
 }
 
 test_execute_mount()
 {
-   ( chroot "${ROOTFS_DIR}" /bin/mount --version 1> /dev/null && return 0 ) || return 1
+   ( chroot "${rootfs_dir}" /bin/mount --version 1> /dev/null && return 0 ) || return 1
 }
 
 test_execute_rsync()
 {
-    ( chroot "${ROOTFS_DIR}" /usr/bin/rsync --version 1> /dev/null && return 0 ) || return 1
+    ( chroot "${rootfs_dir}" /usr/bin/rsync --version 1> /dev/null && return 0 ) || return 1
 }
 
 test_execute_busybox()
 {
-    ( chroot "${ROOTFS_DIR}" /bin/busybox --help 1> /dev/null && return 0 ) || return 1
+    ( chroot "${rootfs_dir}" /bin/busybox --help 1> /dev/null && return 0 ) || return 1
 }
 
 test_execute_mkfs_ext4()
 {
-    ( chroot "${ROOTFS_DIR}" /sbin/mkfs.ext4 "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
+    ( chroot "${rootfs_dir}" /sbin/mkfs.ext4 "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
 }
 
 test_execute_mkfs_f2fs()
 {
-    ( chroot "${ROOTFS_DIR}" /sbin/mkfs.f2fs "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
+    ( chroot "${rootfs_dir}" /sbin/mkfs.f2fs "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
 }
 
 usage()
@@ -145,10 +149,10 @@ if [ "${#}" -ne 1 ]; then
     exit 1
 fi
 
-ROOTFS_DIR="${*}"
+ROOTFS_IMG="${*}"
 
-if [ ! -d "${ROOTFS_DIR}" ]; then
-    echo "Given rootfs directory (${ROOTFS_DIR}) not found."
+if [ ! -r "${ROOTFS_IMG}" ]; then
+    echo "Given rootfs image '${ROOTFS_IMG}' not found."
     usage
     exit 1
 fi
@@ -161,5 +165,12 @@ run_test test_execute_rsync
 run_test test_execute_busybox
 run_test test_execute_mkfs_ext4
 run_test test_execute_mkfs_f2fs
+
+if [ "${RESULT}" -ne 0 ]; then
+    echo "ERROR: There where failures testing '${ROOTFS_IMG}'."
+    exit 1
+fi
+
+echo "All Ok"
 
 exit 0
