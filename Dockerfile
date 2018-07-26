@@ -1,15 +1,13 @@
-FROM registry.hub.docker.com/library/debian:jessie-slim
+FROM registry.hub.docker.com/library/alpine:latest
 
 LABEL Maintainer="software-embedded-platform@ultimaker.com" \
-      Comment="Ultimaker um-rootfs_debian_armhf"
+      Comment="Ultimaker update-tools filesystem"
 
-RUN apt-get update && \
-    apt-get install -q -y --no-install-recommends \
-    debootstrap \
-    qemu-user-static \
-    xz-utils && \
-    rm -r /var/lib/apt/lists/*
+RUN apk add --no-cache \
+        qemu-arm \
+        squashfs-tools \
+        xz \
+    && \
+    rm -f /var/cache/apk/*
 
 COPY tests/buildenv.sh /tests/buildenv.sh
-COPY tests/rootfs.sh /tests/rootfs.sh
-COPY build.sh /build.sh
