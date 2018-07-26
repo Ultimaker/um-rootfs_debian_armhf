@@ -111,9 +111,8 @@ test_execute_mkfs_f2fs()
 usage()
 {
 cat <<-EOT
-    Usage:   "${0}" [OPTIONS]
+    Usage:   "${0}" [OPTIONS] <file.img>
         -h   Print usage
-        -r   Path to the bootstrapped rootfs that needs to be tested.
     NOTE: This script requires root permissions to run.
 EOT
 }
@@ -124,14 +123,11 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
-while getopts ":hr:" options; do
+while getopts ":h" options; do
     case "${options}" in
     h)
       usage
       exit 0
-      ;;
-    r)
-      ROOTFS_DIR="${OPTARG}"
       ;;
     :)
       echo "Option -${OPTARG} requires an argument."
@@ -142,6 +138,14 @@ while getopts ":hr:" options; do
     esac
 done
 shift "$((OPTIND - 1))"
+
+if [ "${#}" -ne 1 ]; then
+    echo "Missing argument <file.img>."
+    usage
+    exit 1
+fi
+
+ROOTFS_DIR="${*}"
 
 if [ ! -d "${ROOTFS_DIR}" ]; then
     echo "Given rootfs directory (${ROOTFS_DIR}) not found."
