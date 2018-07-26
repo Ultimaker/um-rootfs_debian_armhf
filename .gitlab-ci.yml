@@ -91,7 +91,7 @@ build package:
   artifacts:
     name: "$CI_COMMIT_REF_NAME-$CI_COMMIT_SHA"
     paths:
-    - ./build/*.tar.xz
+    - ./rootfs*.xz.img
     expire_in: 3 days
 
 test artifact:
