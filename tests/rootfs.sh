@@ -98,6 +98,12 @@ test_execute_mkfs_f2fs()
     ( chroot "${rootfs_dir}" /usr/sbin/mkfs.f2fs "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
 }
 
+test_execute_resizef2fs()
+{
+    test_execute_mkfs_f2fs
+    ( chroot "${rootfs_dir}" /usr/sbin/resize.f2fs "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
+}
+
 test_execute_mount()
 {
    ( chroot "${rootfs_dir}" /bin/mount --version 1> /dev/null && return 0 ) || return 1
@@ -161,6 +167,7 @@ run_test test_execute_fdisk
 run_test test_execute_mkfs_ext4
 run_test test_execute_resize2fs
 run_test test_execute_mkfs_f2fs
+run_test test_execute_resizef2fs
 run_test test_execute_mount
 run_test test_execute_rsync
 
