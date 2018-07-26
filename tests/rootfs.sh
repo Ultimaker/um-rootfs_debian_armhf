@@ -127,6 +127,8 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
+trap teardown EXIT
+
 while getopts ":h" options; do
     case "${options}" in
     h)
