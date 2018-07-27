@@ -164,20 +164,23 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
+for img in ${ROOTFS_IMG}; do
+    echo "Running tests on '${img}'."
 
-run_test test_execute_busybox
-run_test test_execute_fdisk
-run_test test_execute_mkfs_ext4
-run_test test_execute_resize2fs
-run_test test_execute_mkfs_f2fs
-run_test test_execute_resizef2fs
-run_test test_execute_mount
-run_test test_execute_rsync
+    run_test test_execute_busybox
+    run_test test_execute_fdisk
+    run_test test_execute_mkfs_ext4
+    run_test test_execute_resize2fs
+    run_test test_execute_mkfs_f2fs
+    run_test test_execute_resizef2fs
+    run_test test_execute_mount
+    run_test test_execute_rsync
 
-if [ "${RESULT}" -ne 0 ]; then
-    echo "ERROR: There where failures testing '${ROOTFS_IMG}'."
-    exit 1
-fi
+    if [ "${RESULT}" -ne 0 ]; then
+       echo "ERROR: There where failures testing '${img}'."
+       exit 1
+    fi
+done
 
 echo "All Ok"
 
