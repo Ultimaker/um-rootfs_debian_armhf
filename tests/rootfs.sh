@@ -74,7 +74,7 @@ run_test()
 
 test_execute_busybox()
 {
-    ( chroot "${rootfs_dir}" /bin/busybox --help 1> /dev/null && return 0 ) || return 1
+    ( chroot "${rootfs_dir}" /bin/busybox true && return 0 ) || return 1
 }
 
 test_execute_fdisk()
