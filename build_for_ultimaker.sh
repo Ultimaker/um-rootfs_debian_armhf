@@ -5,7 +5,7 @@ set -eu
 ARCH="${ARCH:-armhf}"
 CUR_DIR=$(pwd)
 BUILD_DIR="${CUR_DIR}/.build_${ARCH}"
-ROOTFS_DIR="${BUILD_DIR}/rootfs"
+ROOTFS_IMG="${BUILD_DIR}/rootfs*.xz.img"
 RUN_ENV_CHECK="no"
 RUN_TESTS="no"
 
@@ -19,7 +19,7 @@ env_check()
 run_tests()
 {
     cd tests
-    ./rootfs.sh -r "${ROOTFS_DIR}"
+    ./rootfs.sh "${ROOTFS_IMG}"
     cd "${CUR_DIR}"
 }
 
