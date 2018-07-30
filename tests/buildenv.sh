@@ -2,7 +2,7 @@
 
 set -eu
 
-PRECONDITIONS="apk cpio find git xz"
+PRECONDITIONS="apk mksquashfs qemu-arm xz"
 
 RESULT=0
 
