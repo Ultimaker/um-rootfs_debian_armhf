@@ -2,7 +2,7 @@
 
 set -eu
 
-TEST_IMAGE_FILE_PATH="/tmp/test_file.img"
+TMP_TEST_IMAGE_FILE="/tmp/test_file.img"
 
 QEMU_ARM_BIN="$(command -v qemu-arm-static || command -v qemu-arm)"
 
@@ -31,12 +31,12 @@ setup()
     mount --bind /proc "${rootfs_dir}/proc" 1> /dev/null
     ln -s ../proc/self/mounts "${rootfs_dir}/etc/mtab"
 
-    dd if=/dev/zero of="${rootfs_dir}/${TEST_IMAGE_FILE_PATH}" bs=32M count=4 2> /dev/null
+    dd if=/dev/zero of="${rootfs_dir}/${TMP_TEST_IMAGE_FILE}" bs=32M count=4 2> /dev/null
 }
 
 teardown()
 {
-    MOUNTS="${rootfs_dir} ${overlayfs_dir}/rom ${overlayfs_dir}"
+    mounts="${rootfs_dir} ${overlayfs_dir}/rom ${overlayfs_dir}"
 
     if [ ! -d "${rootfs_dir}" ]; then
         return
@@ -46,7 +46,7 @@ teardown()
         umount "${rootfs_dir}/proc" || RESULT=1
     fi
 
-    for mount in ${MOUNTS}; do
+    for mount in ${mounts}; do
         if grep -q "${mount}" /proc/mounts; then
             umount "${mount}" || RESULT=1
         fi
@@ -79,29 +79,29 @@ test_execute_busybox()
 
 test_execute_fdisk()
 {
-    ( chroot "${rootfs_dir}" /sbin/fdisk -l "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
+    ( chroot "${rootfs_dir}" /sbin/fdisk -l "${TMP_TEST_IMAGE_FILE}" 1> /dev/null && return 0 ) || return 1
 }
 
 test_execute_mkfs_ext4()
 {
-    ( chroot "${rootfs_dir}" /sbin/mkfs.ext4 "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
+    ( chroot "${rootfs_dir}" /sbin/mkfs.ext4 "${TMP_TEST_IMAGE_FILE}" 1> /dev/null && return 0 ) || return 1
 }
 
 test_execute_resize2fs()
 {
     test_execute_mkfs_ext4
-    ( chroot "${rootfs_dir}" /usr/sbin/resize2fs "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
+    ( chroot "${rootfs_dir}" /usr/sbin/resize2fs "${TMP_TEST_IMAGE_FILE}" 1> /dev/null && return 0 ) || return 1
 }
 
 test_execute_mkfs_f2fs()
 {
-    ( chroot "${rootfs_dir}" /usr/sbin/mkfs.f2fs "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
+    ( chroot "${rootfs_dir}" /usr/sbin/mkfs.f2fs "${TMP_TEST_IMAGE_FILE}" 1> /dev/null && return 0 ) || return 1
 }
 
 test_execute_resizef2fs()
 {
     test_execute_mkfs_f2fs
-    ( chroot "${rootfs_dir}" /usr/sbin/resize.f2fs "${TEST_IMAGE_FILE_PATH}" 1> /dev/null && return 0 ) || return 1
+    ( chroot "${rootfs_dir}" /usr/sbin/resize.f2fs "${TMP_TEST_IMAGE_FILE}" 1> /dev/null && return 0 ) || return 1
 }
 
 test_execute_mount()
@@ -164,23 +164,21 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
-for img in ${ROOTFS_IMG}; do
-    echo "Running tests on '${img}'."
+echo "Running tests on '${ROOTFS_IMG}'."
 
-    run_test test_execute_busybox
-    run_test test_execute_fdisk
-    run_test test_execute_mkfs_ext4
-    run_test test_execute_resize2fs
-    run_test test_execute_mkfs_f2fs
-    run_test test_execute_resizef2fs
-    run_test test_execute_mount
-    run_test test_execute_rsync
+run_test test_execute_busybox
+run_test test_execute_fdisk
+run_test test_execute_mkfs_ext4
+run_test test_execute_resize2fs
+run_test test_execute_mkfs_f2fs
+run_test test_execute_resizef2fs
+run_test test_execute_mount
+run_test test_execute_rsync
 
-    if [ "${RESULT}" -ne 0 ]; then
-       echo "ERROR: There where failures testing '${img}'."
-       exit 1
-    fi
-done
+if [ "${RESULT}" -ne 0 ]; then
+   echo "ERROR: There where failures testing '${ROOTFS_IMG}'."
+   exit 1
+fi
 
 echo "All Ok"
 

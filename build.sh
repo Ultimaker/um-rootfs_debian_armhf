@@ -14,14 +14,14 @@ ROOTFS_DIR="${BUILD_DIR}/rootfs"
 
 cleanup()
 {
-    mount_points="$(grep "${ROOTFS_DIR}" /proc/mounts || true)"
+    mounts="$(grep "${ROOTFS_DIR}" /proc/mounts || true)"
 
     if [ ! -d "${BUILD_DIR}" ]; then
         return
     fi
-    if [ -n "${mount_points}" ]; then
+    if [ -n "${mounts}" ]; then
         echo "Cannot delete '${BUILD_DIR}', unmount the following mount points first:"
-        echo "${mount_points}"
+        echo "${mounts}"
         exit 1
     fi
 
@@ -52,13 +52,13 @@ bootstrap_rootfs()
 
 compress_rootfs()
 {
-    if [ -f "${ROOTFS_ARCHIVE}" ]; then
-        rm -f "${ROOTFS_ARCHIVE}"
+    if [ -f "${BUILD_DIR}/${ROOTFS_ARCHIVE}" ]; then
+        rm -f "${BUILD_DIR}/${ROOTFS_ARCHIVE}"
     fi
 
     echo "Compressing rootfs"
-    mksquashfs "${ROOTFS_DIR}" "${ROOTFS_ARCHIVE}" -comp xz
-    echo "Created ${ROOTFS_ARCHIVE}."
+    mksquashfs "${ROOTFS_DIR}" "${BUILD_DIR}/${ROOTFS_ARCHIVE}" -comp xz
+    echo "Created ${BUILD_DIR}/${ROOTFS_ARCHIVE}."
 }
 
 usage()

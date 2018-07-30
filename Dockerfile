@@ -8,6 +8,7 @@ RUN apk add --no-cache \
         squashfs-tools \
         xz \
     && \
-    rm -f /var/cache/apk/*
+    rm -f /var/cache/apk/* && \
+    ln -sf /usr/bin/qemu-arm /usr/bin/qemu-arm-static
 
 COPY tests/buildenv.sh /tests/buildenv.sh
