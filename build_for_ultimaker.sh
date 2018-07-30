@@ -35,7 +35,7 @@ EOT
 }
 
 while getopts ":cht" options; do
-  case "${options}" in
+    case "${options}" in
     c)
       RUN_ENV_CHECK="yes"
       ;;
@@ -47,16 +47,16 @@ while getopts ":cht" options; do
       RUN_TESTS="yes"
       ;;
     :)
-      printf "Option -%s requires an argument.\\n" "${OPTARG}"
+      echo "Option -${OPTARG} requires an argument."
       exit 1
       ;;
-    \?)
-      printf "Invalid option: -%s\\n" "${OPTARG}"
+    ?)
+      echo "Invalid option: -${OPTARG}"
       exit 1
       ;;
-  esac
+    esac
 done
-shift "$((OPTIND-1))"
+shift "((OPTIND - 1))"
 
 
 # Check build environment requirements
