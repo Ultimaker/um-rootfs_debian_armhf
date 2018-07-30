@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0+
 #
 # Copyright (C) 2018 Ultimaker B.V.
-# Copyright (C) 2018 Raymond Siudak <r.siudak@ultimaker.com> 
+# Copyright (C) 2018 Raymond Siudak <r.siudak@ultimaker.com>
 #
 # GitLab CI package build is split up into two parts.
 # * Build environment: creates the docker image that is needed for package generation
@@ -27,17 +27,17 @@ stages:
   image: registry.hub.docker.com/koalaman/shellcheck-alpine:stable
   stage: lint
 
-lint build environment:
+build environment:
   <<: *shell_linting_common
   script:
   - shellcheck -C -f tty -s sh tests/buildenv.sh
 
-lint package build script:
+package build script:
   <<: *shell_linting_common
   script:
   - shellcheck -C -f tty -s sh build.sh
 
-lint local build script:
+local build script:
   <<: *shell_linting_common
   script:
   - shellcheck -C -f tty -s sh build_for_ultimaker.sh
@@ -51,19 +51,19 @@ lint local build script:
     variables:
     - $CI_COMMIT_MESSAGE =~ /dockerfile/i
 
-prepare build environment:
+build environment:
   <<: *environment_common
   stage: prepare
   script:
   - docker build --rm -t "$CI_COMMIT_SHA:$CI_PIPELINE_ID" .
 
-verify build environment:
+build environment:
   stage: verify
   <<: *environment_common
   script:
     - docker run --rm -w /tests "$CI_COMMIT_SHA:$CI_PIPELINE_ID" ./buildenv.sh
 
-push build environment:
+build environment:
   <<: *environment_common
   except:
   - /^(?!master$)/
@@ -75,7 +75,7 @@ push build environment:
   - docker tag  "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA" "$CI_REGISTRY_IMAGE:latest"
   - docker push "$CI_REGISTRY_IMAGE:latest"
 
-cleanup build environment:
+build environment:
   <<: *environment_common
   stage: cleanup
   when: always
@@ -93,7 +93,7 @@ cleanup build environment:
     GIT_SUBMODULE_STRATEGY: recursive
   image: "$CI_REGISTRY_IMAGE:latest"
 
-build package:
+package:
   <<: *pkg_common
   stage: build
   script:
@@ -104,7 +104,7 @@ build package:
     - ./rootfs*.xz.img
     expire_in: 3 days
 
-test package:
+package:
   stage: test
   <<: *pkg_common
   dependencies:
