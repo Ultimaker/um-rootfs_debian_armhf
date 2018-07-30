@@ -7,6 +7,7 @@ CUR_DIR="$(pwd)"
 BUILD_DIR="${CUR_DIR}/.build_${ARCH}"
 ALPINE_VERSION="${ALPINE_VERSION:-latest-stable}"
 ALPINE_REPO="${ALPINE_REPO:-http://dl-cdn.alpinelinux.org/alpine}"
+QEMU_ARM_BIN="$(command -v qemu-arm-static || command -v qemu-arm)"
 ROOTFS_ARCHIVE="rootfs.xz.img"
 ROOTFS_DIR="${BUILD_DIR}/rootfs"
 
@@ -30,6 +31,10 @@ cleanup()
 bootstrap_rootfs()
 {
     echo "Bootstrapping Alpine Linux rootfs in to ${ROOTFS_DIR}"
+
+    mkdir -p "${ROOTFS_DIR}/usr/bin"
+    cp "${QEMU_ARM_BIN}" "${ROOTFS_DIR}/usr/bin/"
+
     mkdir -p "${ROOTFS_DIR}/etc/apk"
     echo "${ALPINE_REPO}/${ALPINE_VERSION}/main" > "${ROOTFS_DIR}/etc/apk/repositories"
     # Install rootfs with base applications
@@ -41,6 +46,8 @@ bootstrap_rootfs()
     apk --root "${ROOTFS_DIR}" \
        fetch --allow-untrusted --arch "${ARCH}" --stdout alpine-base | tar -xvz -C "${ROOTFS_DIR}" etc
     rm -f "${ROOTFS_DIR}/var/cache/apk"/*
+
+    rm -f "${ROOTFS_DIR}/usr/bin/${QEMU_ARM_BIN}"
 }
 
 compress_rootfs()
