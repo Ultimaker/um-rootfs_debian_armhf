@@ -1,0 +1,113 @@
+# SPDX-License-Identifier: AGPL-3.0+
+#
+# Copyright (C) 2018 Ultimaker B.V.
+# Copyright (C) 2018 Raymond Siudak <r.siudak@ultimaker.com>
+#
+# GitLab CI package build is split up into two parts.
+# * Build environment: creates the docker image that is needed for package generation
+# * Package generation: creates the final artifact
+
+stages:
+- lint
+- prepare
+- verify
+- push
+- build
+- test
+- cleanup
+
+# Common requisites
+# ==========
+.parameters common: &parameters_common
+  tags:
+  - docker
+
+.shell linting common: &shell_linting_common
+  <<: *parameters_common
+  image: registry.hub.docker.com/koalaman/shellcheck-alpine:stable
+  stage: lint
+
+build environment:
+  <<: *shell_linting_common
+  script:
+  - shellcheck -C -f tty -s sh tests/buildenv.sh
+
+package build script:
+  <<: *shell_linting_common
+  script:
+  - shellcheck -C -f tty -s sh build.sh
+
+local build script:
+  <<: *shell_linting_common
+  script:
+  - shellcheck -C -f tty -s sh build_for_ultimaker.sh
+
+# Build environment
+# =================
+.build environment common: &environment_common
+  <<: *parameters_common
+  image: registry.hub.docker.com/library/docker:stable
+  only:
+    variables:
+    - $CI_COMMIT_MESSAGE =~ /dockerfile/i
+
+build environment:
+  <<: *environment_common
+  stage: prepare
+  script:
+  - docker build --rm -t "$CI_COMMIT_SHA:$CI_PIPELINE_ID" .
+
+build environment:
+  stage: verify
+  <<: *environment_common
+  script:
+    - docker run --rm -w /tests "$CI_COMMIT_SHA:$CI_PIPELINE_ID" ./buildenv.sh
+
+build environment:
+  <<: *environment_common
+  except:
+  - /^(?!master$)/
+  stage: push
+  script:
+  - docker login -u gitlab-ci-token -p "$CI_JOB_TOKEN" "$CI_REGISTRY"
+  - docker tag  "$CI_COMMIT_SHA:$CI_PIPELINE_ID" "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA"
+  - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA"
+  - docker tag  "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA" "$CI_REGISTRY_IMAGE:latest"
+  - docker push "$CI_REGISTRY_IMAGE:latest"
+
+build environment:
+  <<: *environment_common
+  stage: cleanup
+  when: always
+  script:
+  - |
+    if docker inspect --type image "$CI_COMMIT_SHA:$CI_PIPELINE_ID" 1> /dev/null; then
+      docker rmi "$CI_COMMIT_SHA:$CI_PIPELINE_ID"
+    fi
+
+# Package generation
+# ==================
+.build pkg common: &pkg_common
+  <<: *parameters_common
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
+  image: "$CI_REGISTRY_IMAGE:latest"
+
+package:
+  <<: *pkg_common
+  stage: build
+  script:
+  - ./build.sh
+  artifacts:
+    name: "$CI_COMMIT_REF_NAME-$CI_COMMIT_SHA"
+    paths:
+    - ./rootfs*.xz.img
+    expire_in: 3 days
+
+package:
+  stage: test
+  <<: *pkg_common
+  dependencies:
+  - build package
+  script:
+  - ./tests/rootfs.sh rootfs*.xz.img
