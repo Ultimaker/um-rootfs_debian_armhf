@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0+
 #
 # Copyright (C) 2018 Ultimaker B.V.
-# Copyright (C) 2018 Raymond Siudak <r.siudak@ultimaker.com> 
+# Copyright (C) 2018 Raymond Siudak <r.siudak@ultimaker.com>
 #
 # GitLab CI package build is split up into two parts.
 # * Build environment: creates the docker image that is needed for package generation
