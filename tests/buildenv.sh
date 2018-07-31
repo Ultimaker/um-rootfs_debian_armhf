@@ -2,23 +2,34 @@
 
 set -eu
 
-PRECONDITIONS="apk mksquashfs qemu-arm xz"
+PACKAGES="apk mksquashfs qemu-arm xz"
+FILESYSTEMS="ext4 overlay squashfs tmpfs"
 
-RESULT=0
+result=0
 
-check_precondition()
+check_filesystem_support()
 {
-    CMD="${1}"
-    command -V "${CMD}" || RESULT=1
+    fs="${1}"
+    grep "${fs}" "/proc/filesystems" || result=1
+}
+
+check_package_installation()
+{
+    cmd="${1}"
+    command -V "${cmd}" || result=1
 }
 
 echo "Checking build environment preconditions:"
 
-for pkg in ${PRECONDITIONS}; do
-    check_precondition "${pkg}"
+for pkg in ${PACKAGES}; do
+    check_package_installation "${pkg}"
 done
 
-if [ "${RESULT}" -ne 0 ]; then
+for fs in ${FILESYSTEMS}; do
+    check_filesystem_support "${fs}"
+done
+
+if [ "${result}" -ne 0 ]; then
 	echo "ERROR: Missing preconditions, cannot continue."
 	exit 1
 fi
