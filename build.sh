@@ -52,13 +52,13 @@ bootstrap_rootfs()
 
 compress_rootfs()
 {
-    if [ -f "${BUILD_DIR}/${ROOTFS_ARCHIVE}" ]; then
-        rm -f "${BUILD_DIR}/${ROOTFS_ARCHIVE}"
+    if [ -f "${ROOTFS_ARCHIVE}" ]; then
+        rm -f "${ROOTFS_ARCHIVE}"
     fi
 
     echo "Compressing rootfs"
-    mksquashfs "${ROOTFS_DIR}" "${BUILD_DIR}/${ROOTFS_ARCHIVE}" -comp xz
-    echo "Created ${BUILD_DIR}/${ROOTFS_ARCHIVE}."
+    mksquashfs "${ROOTFS_DIR}" "${ROOTFS_ARCHIVE}" -comp xz
+    echo "Created ${ROOTFS_ARCHIVE}."
 }
 
 usage()
