@@ -101,7 +101,7 @@ build package:
   artifacts:
     name: "$CI_COMMIT_REF_NAME-$CI_COMMIT_SHA"
     paths:
-    - ./rootfs*.xz.img
+    - ./.build_*/rootfs*.xz.img
     expire_in: 3 days
 
 test package:
@@ -110,4 +110,4 @@ test package:
   dependencies:
   - build package
   script:
-  - ./tests/rootfs.sh rootfs*.xz.img
+  - ./tests/rootfs.sh .build_*/rootfs*.xz.img
