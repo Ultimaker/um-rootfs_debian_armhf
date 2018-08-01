@@ -16,6 +16,7 @@ DOCKER_BUILD_DIR="${DOCKER_WORK_DIR}/.build_${ARCH}"
 run_env_check="yes"
 run_tests="yes"
 
+
 run_in_docker()
 {
     work_dir="${1}"
@@ -38,7 +39,6 @@ env_check()
     else
         ./tests/buildenv.sh
     fi
-
 }
 
 run_build()

@@ -7,6 +7,7 @@ FILESYSTEMS="ext4 overlay squashfs tmpfs"
 
 result=0
 
+
 check_filesystem_support()
 {
     for fs in ${FILESYSTEMS}; do
@@ -32,8 +33,8 @@ check_package_installation
 check_filesystem_support
 
 if [ "${result}" -ne 0 ]; then
-	echo "ERROR: Missing preconditions, cannot continue."
-	exit 1
+    echo "ERROR: Missing preconditions, cannot continue."
+    exit 1
 fi
 
 echo "All Ok"

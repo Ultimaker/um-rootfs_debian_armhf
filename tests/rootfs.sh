@@ -165,7 +165,6 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 echo "Running tests on '${ROOTFS_IMG}'."
-
 run_test test_execute_busybox
 run_test test_execute_fdisk
 run_test test_execute_mkfs_ext4
