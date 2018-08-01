@@ -9,25 +9,27 @@ result=0
 
 check_filesystem_support()
 {
-    fs="${1}"
-    grep "${fs}" "/proc/filesystems" || result=1
+    for fs in ${FILESYSTEMS}; do
+        if grep -q "${fs}" "/proc/filesystems"; then
+            echo "${fs} support: ok"
+        else
+            result=1
+            echo "${fs} support: error"
+        fi
+
+    done
 }
 
 check_package_installation()
 {
-    cmd="${1}"
-    command -V "${cmd}" || result=1
+    for pkg in ${PACKAGES}; do
+        command -V "${pkg}" || result=1
+    done
 }
 
 echo "Checking build environment preconditions:"
-
-for pkg in ${PACKAGES}; do
-    check_package_installation "${pkg}"
-done
-
-for fs in ${FILESYSTEMS}; do
-    check_filesystem_support "${fs}"
-done
+check_package_installation
+check_filesystem_support
 
 if [ "${result}" -ne 0 ]; then
 	echo "ERROR: Missing preconditions, cannot continue."

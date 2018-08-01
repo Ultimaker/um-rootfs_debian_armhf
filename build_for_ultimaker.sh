@@ -22,7 +22,8 @@ run_in_docker()
     script="${2}"
     args="${3}"
 
-    docker run --rm \
+    docker run \
+        --rm \
         --privileged \
         -v "$(pwd):${DOCKER_WORK_DIR}" \
         -w "${work_dir}" \
