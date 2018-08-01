@@ -24,7 +24,7 @@ check_filesystem_support()
 check_package_installation()
 {
     for pkg in ${PACKAGES}; do
-        command -V "${pkg}" || result=1
+        PATH="${PATH}:/sbin:/usr/sbin:/usr/local/sbin" command -V "${pkg}" || result=1
     done
 }
 
