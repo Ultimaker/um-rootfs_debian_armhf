@@ -3,7 +3,7 @@
 set -eu
 
 PACKAGES="apk mksquashfs qemu-arm xz"
-FILESYSTEMS="ext4 overlay squashfs tmpfs"
+FILESYSTEMS="overlay squashfs tmpfs"
 
 result=0
 
