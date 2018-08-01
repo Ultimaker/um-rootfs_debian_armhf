@@ -2,9 +2,8 @@
 
 set -eu
 
+ARM_EMU_BIN="${ARM_EMU_BIN:-}"
 TMP_TEST_IMAGE_FILE="/tmp/test_file.img"
-
-QEMU_ARM_BIN="$(command -v qemu-arm-static || command -v qemu-arm)"
 
 overlayfs_dir=""
 rootfs_dir=""
@@ -13,6 +12,12 @@ RESULT=0
 
 setup()
 {
+    if [ ! -x "${ARM_EMU_BIN}" ]; then
+        echo "Invalid or missing ARMv7 interpreter. Please set ARM_EMU_BIN to a valid interpreter."
+        echo "Run 'tests/buildenv.sh' to check emulation status."
+        exit 1
+    fi
+
     overlayfs_dir="$(mktemp -d)"
     rootfs_dir="$(mktemp -d)"
 
@@ -26,7 +31,8 @@ setup()
           -o "lowerdir=${overlayfs_dir}/rom,upperdir=${overlayfs_dir}/up,workdir=${overlayfs_dir}/work" \
           "${rootfs_dir}"
 
-    cp "${QEMU_ARM_BIN}" "${rootfs_dir}/usr/bin/"
+    touch "${rootfs_dir}/${ARM_EMU_BIN}"
+    mount --bind -o ro "${ARM_EMU_BIN}" "${rootfs_dir}/${ARM_EMU_BIN}"
 
     mount --bind /proc "${rootfs_dir}/proc" 1> /dev/null
     ln -s ../proc/self/mounts "${rootfs_dir}/etc/mtab"
@@ -41,6 +47,9 @@ teardown()
     if [ ! -d "${rootfs_dir}" ]; then
         return
     fi
+
+    umount "${rootfs_dir}/${ARM_EMU_BIN}"
+    unlink "${rootfs_dir}/${ARM_EMU_BIN}"
 
     if grep -q "${rootfs_dir}/proc" /proc/mounts; then
         umount "${rootfs_dir}/proc" || RESULT=1
