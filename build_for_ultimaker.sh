@@ -6,6 +6,7 @@ CI_REGISTRY_IMAGE="${CI_REGISTRY_IMAGE:-registry.gitlab.com/ultimaker/embedded/p
 CI_REGISTRY_IMAGE_TAG="${CI_REGISTRY_IMAGE_TAG:-latest}"
 
 ARCH="${ARCH:-armhf}"
+ARM_EMU_BIN=
 CUR_DIR=$(pwd)
 BUILD_DIR="${CUR_DIR}/.build_${ARCH}"
 ROOTFS_IMG="rootfs.xz.img"
@@ -13,8 +14,38 @@ ROOTFS_IMG="rootfs.xz.img"
 DOCKER_WORK_DIR="${DOCKER_WORK_DIR:-/build}"
 DOCKER_BUILD_DIR="${DOCKER_WORK_DIR}/.build_${ARCH}"
 
+ARMv7_MAGIC="7f454c4601010100000000000000000002002800"
+
 run_env_check="yes"
 run_tests="yes"
+
+
+cleanup()
+{
+    unset ARM_EMU_BIN
+}
+
+setup_emulation_support()
+{
+    for emu in /proc/sys/fs/binfmt_misc/*; do
+        if [ ! -r "${emu}" ]; then
+            continue
+        fi
+
+        if grep -q "${ARMv7_MAGIC}" "${emu}"; then
+            ARM_EMU_BIN="$(grep "interpreter" "${emu}")"
+            ARM_EMU_BIN="${ARM_EMU_BIN#interpreter }"
+            break
+        fi
+    done
+
+    if [ ! -x "${ARM_EMU_BIN}" ]; then
+        echo "Unusable ARMv7 interpreter '${ARM_EMU_BIN}'."
+        exit 1
+    fi
+
+    export ARM_EMU_BIN
+}
 
 run_in_docker()
 {
@@ -22,8 +53,11 @@ run_in_docker()
     script="${2}"
     args="${3}"
 
-    docker run --rm \
+    docker run \
+        --rm \
         --privileged \
+        -e "ARM_EMU_BIN=${ARM_EMU_BIN}" \
+        -v "${ARM_EMU_BIN}:${ARM_EMU_BIN}:ro" \
         -v "$(pwd):${DOCKER_WORK_DIR}" \
         -w "${work_dir}" \
         "${CI_REGISTRY_IMAGE}:${CI_REGISTRY_IMAGE_TAG}" \
@@ -37,7 +71,6 @@ env_check()
     else
         ./tests/buildenv.sh
     fi
-
 }
 
 run_build()
@@ -69,6 +102,8 @@ cat <<-EOT
 EOT
 }
 
+trap cleanup EXIT
+
 while getopts ":cht" options; do
     case "${options}" in
     c)
@@ -93,6 +128,7 @@ while getopts ":cht" options; do
 done
 shift "$((OPTIND - 1))"
 
+setup_emulation_support
 
 if [ "${run_env_check}" = "yes" ]; then
     env_check
