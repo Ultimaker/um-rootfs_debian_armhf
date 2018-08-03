@@ -4,8 +4,9 @@ set -eu
 
 ARM_EMU_BIN="${ARM_EMU_BIN:-}"
 BINFMT_MISC="${BINFMT_MISC:-/proc/sys/fs/binfmt_misc/}"
-PACKAGES="apk mksquashfs xz"
+
 FILESYSTEMS="overlay squashfs tmpfs"
+PACKAGES="apk mksquashfs xz"
 
 ARMv7_MAGIC="7f454c4601010100000000000000000002002800"
 
