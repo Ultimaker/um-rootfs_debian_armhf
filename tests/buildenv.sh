@@ -36,8 +36,7 @@ check_emulation_support()
         fi
 
         if grep -q "${ARMv7_MAGIC}" "${emu}"; then
-            __ARM_EMU_BIN="$(grep "interpreter" "${emu}")"
-            __ARM_EMU_BIN="${__ARM_EMU_BIN#interpreter }"
+            __ARM_EMU_BIN="$(sed 's/interpreter //;t;d' "${emu}")"
             break
         fi
     done
