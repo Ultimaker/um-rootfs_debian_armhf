@@ -33,8 +33,7 @@ setup_emulation_support()
         fi
 
         if grep -q "${ARMv7_MAGIC}" "${emu}"; then
-            ARM_EMU_BIN="$(grep "interpreter" "${emu}")"
-            ARM_EMU_BIN="${ARM_EMU_BIN#interpreter }"
+            ARM_EMU_BIN="$(sed 's/interpreter //;t;d' "${emu}")"
             break
         fi
     done
@@ -67,7 +66,7 @@ run_in_docker()
 env_check()
 {
     if command -V docker; then
-        run_in_docker "${DOCKER_WORK_DIR}/tests" "./buildenv.sh" ""
+        run_in_docker "${DOCKER_WORK_DIR}" "./tests/buildenv.sh" ""
     else
         ./tests/buildenv.sh
     fi
@@ -85,7 +84,7 @@ run_build()
 run_tests()
 {
     if command -V docker; then
-        run_in_docker "${DOCKER_WORK_DIR}/tests" "./rootfs.sh" "${DOCKER_BUILD_DIR}/${ROOTFS_IMG}"
+        run_in_docker "${DOCKER_WORK_DIR}" "./tests/rootfs.sh" "${DOCKER_BUILD_DIR}/${ROOTFS_IMG}"
     else
         ./tests/rootfs.sh "${BUILD_DIR}/${ROOTFS_IMG}"
     fi

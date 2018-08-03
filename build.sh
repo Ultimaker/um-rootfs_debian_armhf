@@ -43,8 +43,16 @@ bootstrap_prepare()
 
 bootstrap_unprepare()
 {
-    umount "${ROOTFS_DIR}/${ARM_EMU_BIN}"
-    unlink "${ROOTFS_DIR}/${ARM_EMU_BIN}"
+    if [ ! -e "${ROOTFS_DIR}/${ARM_EMU_BIN}" ]; then
+        return
+    fi
+
+    if grep -q "$(realpath "${ROOTFS_DIR}/${ARM_EMU_BIN}")" "/proc/mounts"; then
+        umount "${ROOTFS_DIR}/${ARM_EMU_BIN}"
+    fi
+    if [ -f "${ROOTFS_DIR}/${ARM_EMU_BIN}" ]; then
+        unlink "${ROOTFS_DIR}/${ARM_EMU_BIN}"
+    fi
 }
 
 bootstrap_rootfs()
