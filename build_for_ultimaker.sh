@@ -97,7 +97,6 @@ cat <<-EOT
         -c   Skip run of build environment checks
         -h   Print usage
         -t   Skip run of rootfs tests
-    NOTE: This script requires root permissions to run.
 EOT
 }
 
