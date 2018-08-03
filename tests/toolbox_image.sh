@@ -4,6 +4,7 @@ set -eu
 
 ARM_EMU_BIN="${ARM_EMU_BIN:-}"
 TMP_TEST_IMAGE_FILE="/tmp/test_file.img"
+SYSTEM_UPDATE_ENTRYPOINT="/sbin/startup.sh"
 
 overlayfs_dir=""
 rootfs_dir=""
@@ -129,6 +130,11 @@ test_execute_rsync()
     ( chroot "${rootfs_dir}" /usr/bin/rsync --version 1> /dev/null && return 0 ) || return 1
 }
 
+test_system_update_entrypoint()
+{
+    test -x "${rootfs_dir}${SYSTEM_UPDATE_ENTRYPOINT}"
+}
+
 usage()
 {
 cat <<-EOT
@@ -188,6 +194,7 @@ run_test test_execute_mkfs_f2fs
 run_test test_execute_resizef2fs
 run_test test_execute_mount
 run_test test_execute_rsync
+run_test test_system_update_entrypoint
 
 if [ "${RESULT}" -ne 0 ]; then
    echo "ERROR: There where failures testing '${ROOTFS_IMG}'."
