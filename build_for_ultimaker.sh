@@ -9,7 +9,7 @@ ARCH="${ARCH:-armhf}"
 ARM_EMU_BIN=
 CUR_DIR=$(pwd)
 BUILD_DIR="${CUR_DIR}/.build_${ARCH}"
-ROOTFS_IMG="rootfs.xz.img"
+TOOLBOX_IMAGE="um-update_toolbox.xz.img"
 
 DOCKER_WORK_DIR="${DOCKER_WORK_DIR:-/build}"
 DOCKER_BUILD_DIR="${DOCKER_WORK_DIR}/.build_${ARCH}"
@@ -84,9 +84,9 @@ run_build()
 run_tests()
 {
     if command -V docker; then
-        run_in_docker "${DOCKER_WORK_DIR}" "./tests/rootfs.sh" "${DOCKER_BUILD_DIR}/${ROOTFS_IMG}"
+        run_in_docker "${DOCKER_WORK_DIR}" "./tests/toolbox_image.sh" "${DOCKER_BUILD_DIR}/${TOOLBOX_IMAGE}"
     else
-        ./tests/rootfs.sh "${BUILD_DIR}/${ROOTFS_IMG}"
+        ./tests/toolbox_image.sh "${BUILD_DIR}/${TOOLBOX_IMAGE}"
     fi
 }
 

@@ -8,7 +8,7 @@ CUR_DIR="$(pwd)"
 BUILD_DIR="${CUR_DIR}/.build_${ARCH}"
 ALPINE_VERSION="${ALPINE_VERSION:-latest-stable}"
 ALPINE_REPO="${ALPINE_REPO:-http://dl-cdn.alpinelinux.org/alpine}"
-ROOTFS_ARCHIVE="rootfs.xz.img"
+TOOLBOX_IMAGE="${TOOLBOX_IMAGE:-um-update_toolbox.xz.img}"
 ROOTFS_DIR="${BUILD_DIR}/rootfs"
 
 
@@ -74,13 +74,13 @@ bootstrap_rootfs()
 
 compress_rootfs()
 {
-    if [ -f "${BUILD_DIR}/${ROOTFS_ARCHIVE}" ]; then
-        rm -f "${BUILD_DIR}/${ROOTFS_ARCHIVE}"
+    if [ -f "${BUILD_DIR}/${TOOLBOX_IMAGE}" ]; then
+        rm -f "${BUILD_DIR}/${TOOLBOX_IMAGE}"
     fi
 
     echo "Compressing rootfs"
-    mksquashfs "${ROOTFS_DIR}" "${BUILD_DIR}/${ROOTFS_ARCHIVE}" -comp xz
-    echo "Created ${BUILD_DIR}/${ROOTFS_ARCHIVE}."
+    mksquashfs "${ROOTFS_DIR}" "${BUILD_DIR}/${TOOLBOX_IMAGE}" -comp xz
+    echo "Created ${BUILD_DIR}/${TOOLBOX_IMAGE}."
 }
 
 usage()
