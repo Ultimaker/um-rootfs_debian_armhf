@@ -9,7 +9,7 @@ SYSTEM_UPDATE_ENTRYPOINT="/sbin/startup.sh"
 overlayfs_dir=""
 rootfs_dir=""
 
-RESULT=0
+result=0
 
 exit_on_failure=false
 
@@ -61,15 +61,15 @@ teardown()
     fi
 
     if grep -q "${rootfs_dir}/proc" /proc/mounts; then
-        umount "${rootfs_dir}/proc" || RESULT=1
+        umount "${rootfs_dir}/proc" || result=1
     fi
 
     for mount in ${mounts}; do
         if grep -q "${mount}" /proc/mounts; then
-            umount "${mount}" || RESULT=1
+            umount "${mount}" || result=1
         fi
         if [ -d "${mount}" ]; then
-            rmdir "${mount}" || RESULT=1
+            rmdir "${mount}" || result=1
         fi
     done
 }
@@ -90,7 +90,7 @@ failure_exit()
     echo "    rmdir '${overlayfs_dir}/'"
     echo "  '"
     echo "The rootfs_dir of the failed test is at '${rootfs_dir}'."
-    exit "${RESULT}"
+    exit "${result}"
 }
 
 run_test()
@@ -102,7 +102,7 @@ run_test()
         echo "Result - OK"
     else
         echo "Result - ERROR"
-        RESULT=1
+        result=1
         if "${exit_on_failure}"; then
             failure_exit
         fi
@@ -222,7 +222,7 @@ run_test test_execute_mount
 run_test test_execute_rsync
 run_test test_system_update_entrypoint
 
-if [ "${RESULT}" -ne 0 ]; then
+if [ "${result}" -ne 0 ]; then
    echo "ERROR: There where failures testing '${ROOTFS_IMG}'."
    exit 1
 fi
