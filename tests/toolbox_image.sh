@@ -102,7 +102,7 @@ run_test()
         echo "Result - OK"
     else
         echo "Result - ERROR"
-	RESULT=1
+        RESULT=1
         if "${exit_on_failure}"; then
             failure_exit
         fi
@@ -172,20 +172,20 @@ EOT
 while getopts ":eh" options; do
     case "${options}" in
     e)
-      exit_on_failure=true
-      ;;
+        exit_on_failure=true
+        ;;
     h)
-      usage
-      exit 0
-      ;;
+        usage
+        exit 0
+        ;;
     :)
-      echo "Option -${OPTARG} requires an argument."
-      exit 1
-      ;;
+        echo "Option -${OPTARG} requires an argument."
+        exit 1
+        ;;
     ?)
-      echo "Invalid option: -${OPTARG}."
-      exit 1
-      ;;
+        echo "Invalid option: -${OPTARG}."
+        exit 1
+        ;;
     esac
 done
 shift "$((OPTIND - 1))"
