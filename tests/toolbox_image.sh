@@ -114,44 +114,44 @@ run_test()
 
 test_execute_busybox()
 {
-    ( chroot "${rootfs_dir}" /bin/busybox true && return 0 ) || return 1
+    chroot "${rootfs_dir}" /bin/busybox true
 }
 
 test_execute_fdisk()
 {
-    ( chroot "${rootfs_dir}" /sbin/fdisk -l "${TMP_TEST_IMAGE_FILE}" 1> /dev/null && return 0 ) || return 1
+    chroot "${rootfs_dir}" /sbin/fdisk -l "${TMP_TEST_IMAGE_FILE}" 1> /dev/null
 }
 
 test_execute_mkfs_ext4()
 {
-    ( chroot "${rootfs_dir}" /sbin/mkfs.ext4 "${TMP_TEST_IMAGE_FILE}" 1> /dev/null && return 0 ) || return 1
+    chroot "${rootfs_dir}" /sbin/mkfs.ext4 "${TMP_TEST_IMAGE_FILE}" 1> /dev/null
 }
 
 test_execute_resize2fs()
 {
     test_execute_mkfs_ext4
-    ( chroot "${rootfs_dir}" /usr/sbin/resize2fs "${TMP_TEST_IMAGE_FILE}" 1> /dev/null && return 0 ) || return 1
+    chroot "${rootfs_dir}" /usr/sbin/resize2fs "${TMP_TEST_IMAGE_FILE}" 1> /dev/null
 }
 
 test_execute_mkfs_f2fs()
 {
-    ( chroot "${rootfs_dir}" /usr/sbin/mkfs.f2fs "${TMP_TEST_IMAGE_FILE}" 1> /dev/null && return 0 ) || return 1
+    chroot "${rootfs_dir}" /usr/sbin/mkfs.f2fs "${TMP_TEST_IMAGE_FILE}" 1> /dev/null
 }
 
 test_execute_resizef2fs()
 {
     test_execute_mkfs_f2fs
-    ( chroot "${rootfs_dir}" /usr/sbin/resize.f2fs "${TMP_TEST_IMAGE_FILE}" 1> /dev/null && return 0 ) || return 1
+    chroot "${rootfs_dir}" /usr/sbin/resize.f2fs "${TMP_TEST_IMAGE_FILE}" 1> /dev/null
 }
 
 test_execute_mount()
 {
-   ( chroot "${rootfs_dir}" /bin/mount --version 1> /dev/null && return 0 ) || return 1
+   chroot "${rootfs_dir}" /bin/mount --version 1> /dev/null
 }
 
 test_execute_rsync()
 {
-    ( chroot "${rootfs_dir}" /usr/bin/rsync --version 1> /dev/null && return 0 ) || return 1
+    chroot "${rootfs_dir}" /usr/bin/rsync --version 1> /dev/null
 }
 
 test_system_update_entrypoint()
