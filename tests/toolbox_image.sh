@@ -11,6 +11,8 @@ rootfs_dir=""
 
 RESULT=0
 
+exit_on_failure=false
+
 setup()
 {
     if [ ! -x "${ARM_EMU_BIN}" ]; then
@@ -72,6 +74,25 @@ teardown()
     done
 }
 
+failure_exit()
+{
+    echo "Test exit per request."
+    echo "When finished, the following is needed to cleanup!"
+    echo "  sudo sh -c '\\"
+    echo "    umount '${rootfs_dir}/${ARM_EMU_BIN}' && \\"
+    echo "    unlink '${rootfs_dir}/${ARM_EMU_BIN}' && \\"
+    echo "    umount '${rootfs_dir}/proc' && \\"
+    echo "    umount '${rootfs_dir}' && \\"
+    echo "    rmdir '${rootfs_dir}' && \\"
+    echo "    umount '${overlayfs_dir}/rom' && \\"
+    echo "    rmdir '${overlayfs_dir}/rom' && \\"
+    echo "    umount '${overlayfs_dir}/' && \\"
+    echo "    rmdir '${overlayfs_dir}/'"
+    echo "  '"
+    echo "The rootfs_dir of the failed test is at '${rootfs_dir}'."
+    exit "${RESULT}"
+}
+
 run_test()
 {
     setup
@@ -82,6 +103,9 @@ run_test()
     else
         echo "Result - ERROR"
 	RESULT=1
+        if "${exit_on_failure}"; then
+            failure_exit
+        fi
     fi
     printf '\n'
 
@@ -139,15 +163,17 @@ usage()
 {
 cat <<-EOT
 	Usage:   "${0}" [OPTIONS] <file.img>
+	    -e   Stop consequtive tests on failure without cleanup
 	    -h   Print usage
 	NOTE: This script requires root permissions to run.
 EOT
 }
 
-trap teardown EXIT
-
-while getopts ":h" options; do
+while getopts ":eh" options; do
     case "${options}" in
+    e)
+      exit_on_failure=true
+      ;;
     h)
       usage
       exit 0
