@@ -8,9 +8,8 @@ CUR_DIR="$(pwd)"
 BUILD_DIR="${CUR_DIR}/.build_${ARCH}"
 ALPINE_VERSION="${ALPINE_VERSION:-latest-stable}"
 ALPINE_REPO="${ALPINE_REPO:-http://dl-cdn.alpinelinux.org/alpine}"
-ROOTFS_ARCHIVE="rootfs.xz.img"
+TOOLBOX_IMAGE="${TOOLBOX_IMAGE:-um-update_toolbox.xz.img}"
 ROOTFS_DIR="${BUILD_DIR}/rootfs"
-
 
 cleanup()
 {
@@ -55,9 +54,28 @@ bootstrap_unprepare()
     fi
 }
 
+add_update_scripts()
+{
+    local_script_dir="${CUR_DIR}/scripts"
+    target_script_dir="${ROOTFS_DIR}/sbin"
+    entrypoint="startup.sh"
+
+    if [ ! -f "${local_script_dir}/${entrypoint}" ]; then
+        echo "Missing entrypoint script '${local_script_dir}/${entrypoint}'."
+        exit 1
+    fi
+
+    for script in "${local_script_dir}"/*; do
+        basename="${script##*/}"
+        echo "Installing ${script} on '${target_script_dir}/${basename}'."
+        cp "${script}" "${target_script_dir}/${basename}"
+        chmod +x "${target_script_dir}/${basename}"
+    done
+}
+
 bootstrap_rootfs()
 {
-    echo "Bootstrapping Alpine Linux rootfs in to ${ROOTFS_DIR}"
+    echo "Bootstrapping Alpine Linux rootfs in to '${ROOTFS_DIR}'."
 
     mkdir -p "${ROOTFS_DIR}/etc/apk"
     echo "${ALPINE_REPO}/${ALPINE_VERSION}/main" > "${ROOTFS_DIR}/etc/apk/repositories"
@@ -70,17 +88,19 @@ bootstrap_rootfs()
     apk --root "${ROOTFS_DIR}" \
        fetch --allow-untrusted --arch "${ARCH}" --stdout alpine-base | tar -xvz -C "${ROOTFS_DIR}" etc
     rm -f "${ROOTFS_DIR}/var/cache/apk"/*
+
+    add_update_scripts
 }
 
 compress_rootfs()
 {
-    if [ -f "${BUILD_DIR}/${ROOTFS_ARCHIVE}" ]; then
-        rm -f "${BUILD_DIR}/${ROOTFS_ARCHIVE}"
+    if [ -f "${BUILD_DIR}/${TOOLBOX_IMAGE}" ]; then
+        rm -f "${BUILD_DIR}/${TOOLBOX_IMAGE}"
     fi
 
     echo "Compressing rootfs"
-    mksquashfs "${ROOTFS_DIR}" "${BUILD_DIR}/${ROOTFS_ARCHIVE}" -comp xz
-    echo "Created ${BUILD_DIR}/${ROOTFS_ARCHIVE}."
+    mksquashfs "${ROOTFS_DIR}" "${BUILD_DIR}/${TOOLBOX_IMAGE}" -comp xz
+    echo "Created ${BUILD_DIR}/${TOOLBOX_IMAGE}."
 }
 
 usage()
