@@ -9,7 +9,9 @@ SYSTEM_UPDATE_ENTRYPOINT="/sbin/startup.sh"
 overlayfs_dir=""
 rootfs_dir=""
 
-RESULT=0
+result=0
+
+exit_on_failure=false
 
 setup()
 {
@@ -59,17 +61,36 @@ teardown()
     fi
 
     if grep -q "${rootfs_dir}/proc" /proc/mounts; then
-        umount "${rootfs_dir}/proc" || RESULT=1
+        umount "${rootfs_dir}/proc" || result=1
     fi
 
     for mount in ${mounts}; do
         if grep -q "${mount}" /proc/mounts; then
-            umount "${mount}" || RESULT=1
+            umount "${mount}" || result=1
         fi
         if [ -d "${mount}" ]; then
-            rmdir "${mount}" || RESULT=1
+            rmdir "${mount}" || result=1
         fi
     done
+}
+
+failure_exit()
+{
+    echo "Test exit per request."
+    echo "When finished, the following is needed to cleanup!"
+    echo "  sudo sh -c '\\"
+    echo "    umount '${rootfs_dir}/${ARM_EMU_BIN}' && \\"
+    echo "    unlink '${rootfs_dir}/${ARM_EMU_BIN}' && \\"
+    echo "    umount '${rootfs_dir}/proc' && \\"
+    echo "    umount '${rootfs_dir}' && \\"
+    echo "    rmdir '${rootfs_dir}' && \\"
+    echo "    umount '${overlayfs_dir}/rom' && \\"
+    echo "    rmdir '${overlayfs_dir}/rom' && \\"
+    echo "    umount '${overlayfs_dir}/' && \\"
+    echo "    rmdir '${overlayfs_dir}/'"
+    echo "  '"
+    echo "The rootfs_dir of the failed test is at '${rootfs_dir}'."
+    exit "${result}"
 }
 
 run_test()
@@ -81,7 +102,10 @@ run_test()
         echo "Result - OK"
     else
         echo "Result - ERROR"
-	RESULT=1
+        result=1
+        if "${exit_on_failure}"; then
+            failure_exit
+        fi
     fi
     printf '\n'
 
@@ -90,44 +114,44 @@ run_test()
 
 test_execute_busybox()
 {
-    ( chroot "${rootfs_dir}" /bin/busybox true && return 0 ) || return 1
+    chroot "${rootfs_dir}" /bin/busybox true
 }
 
 test_execute_fdisk()
 {
-    ( chroot "${rootfs_dir}" /sbin/fdisk -l "${TMP_TEST_IMAGE_FILE}" 1> /dev/null && return 0 ) || return 1
+    chroot "${rootfs_dir}" /sbin/fdisk -l "${TMP_TEST_IMAGE_FILE}" 1> /dev/null
 }
 
 test_execute_mkfs_ext4()
 {
-    ( chroot "${rootfs_dir}" /sbin/mkfs.ext4 "${TMP_TEST_IMAGE_FILE}" 1> /dev/null && return 0 ) || return 1
+    chroot "${rootfs_dir}" /sbin/mkfs.ext4 "${TMP_TEST_IMAGE_FILE}" 1> /dev/null
 }
 
 test_execute_resize2fs()
 {
     test_execute_mkfs_ext4
-    ( chroot "${rootfs_dir}" /usr/sbin/resize2fs "${TMP_TEST_IMAGE_FILE}" 1> /dev/null && return 0 ) || return 1
+    chroot "${rootfs_dir}" /usr/sbin/resize2fs "${TMP_TEST_IMAGE_FILE}" 1> /dev/null
 }
 
 test_execute_mkfs_f2fs()
 {
-    ( chroot "${rootfs_dir}" /usr/sbin/mkfs.f2fs "${TMP_TEST_IMAGE_FILE}" 1> /dev/null && return 0 ) || return 1
+    chroot "${rootfs_dir}" /usr/sbin/mkfs.f2fs "${TMP_TEST_IMAGE_FILE}" 1> /dev/null
 }
 
 test_execute_resizef2fs()
 {
     test_execute_mkfs_f2fs
-    ( chroot "${rootfs_dir}" /usr/sbin/resize.f2fs "${TMP_TEST_IMAGE_FILE}" 1> /dev/null && return 0 ) || return 1
+    chroot "${rootfs_dir}" /usr/sbin/resize.f2fs "${TMP_TEST_IMAGE_FILE}" 1> /dev/null
 }
 
 test_execute_mount()
 {
-   ( chroot "${rootfs_dir}" /bin/mount --version 1> /dev/null && return 0 ) || return 1
+   chroot "${rootfs_dir}" /bin/mount --version 1> /dev/null
 }
 
 test_execute_rsync()
 {
-    ( chroot "${rootfs_dir}" /usr/bin/rsync --version 1> /dev/null && return 0 ) || return 1
+    chroot "${rootfs_dir}" /usr/bin/rsync --version 1> /dev/null
 }
 
 test_system_update_entrypoint()
@@ -139,27 +163,29 @@ usage()
 {
 cat <<-EOT
 	Usage:   "${0}" [OPTIONS] <file.img>
+	    -e   Stop consequtive tests on failure without cleanup
 	    -h   Print usage
 	NOTE: This script requires root permissions to run.
 EOT
 }
 
-trap teardown EXIT
-
-while getopts ":h" options; do
+while getopts ":eh" options; do
     case "${options}" in
+    e)
+        exit_on_failure=true
+        ;;
     h)
-      usage
-      exit 0
-      ;;
+        usage
+        exit 0
+        ;;
     :)
-      echo "Option -${OPTARG} requires an argument."
-      exit 1
-      ;;
+        echo "Option -${OPTARG} requires an argument."
+        exit 1
+        ;;
     ?)
-      echo "Invalid option: -${OPTARG}."
-      exit 1
-      ;;
+        echo "Invalid option: -${OPTARG}."
+        exit 1
+        ;;
     esac
 done
 shift "$((OPTIND - 1))"
@@ -196,7 +222,7 @@ run_test test_execute_mount
 run_test test_execute_rsync
 run_test test_system_update_entrypoint
 
-if [ "${RESULT}" -ne 0 ]; then
+if [ "${result}" -ne 0 ]; then
    echo "ERROR: There where failures testing '${ROOTFS_IMG}'."
    exit 1
 fi
