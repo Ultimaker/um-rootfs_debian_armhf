@@ -11,6 +11,8 @@ ALPINE_REPO="${ALPINE_REPO:-http://dl-cdn.alpinelinux.org/alpine}"
 TOOLBOX_IMAGE="${TOOLBOX_IMAGE:-um-update_toolbox.xz.img}"
 ROOTFS_DIR="${BUILD_DIR}/rootfs"
 
+PACKAGES="busybox e2fsprogs-extra f2fs-tools rsync"
+
 cleanup()
 {
     mounts="$(grep "${ROOTFS_DIR}" /proc/mounts || true)"
@@ -82,14 +84,12 @@ bootstrap_rootfs()
     # Install rootfs with base applications
     apk --root "${ROOTFS_DIR}" --update-cache \
        add --allow-untrusted --initdb --arch "${ARCH}" \
-       busybox e2fsprogs-extra f2fs-tools rsync
+       ${PACKAGES}
     # Add baselayout etc files
     echo "Adding baselayout"
     apk --root "${ROOTFS_DIR}" \
        fetch --allow-untrusted --arch "${ARCH}" --stdout alpine-base | tar -xvz -C "${ROOTFS_DIR}" etc
     rm -f "${ROOTFS_DIR}/var/cache/apk"/*
-
-    add_update_scripts
 }
 
 compress_rootfs()
@@ -147,6 +147,7 @@ trap bootstrap_unprepare EXIT
 cleanup
 bootstrap_prepare
 bootstrap_rootfs
+add_update_scripts
 bootstrap_unprepare
 compress_rootfs
 
