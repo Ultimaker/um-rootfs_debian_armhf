@@ -88,8 +88,6 @@ bootstrap_rootfs()
     apk --root "${ROOTFS_DIR}" \
        fetch --allow-untrusted --arch "${ARCH}" --stdout alpine-base | tar -xvz -C "${ROOTFS_DIR}" etc
     rm -f "${ROOTFS_DIR}/var/cache/apk"/*
-
-    add_update_scripts
 }
 
 compress_rootfs()
@@ -147,6 +145,7 @@ trap bootstrap_unprepare EXIT
 cleanup
 bootstrap_prepare
 bootstrap_rootfs
+add_update_scripts
 bootstrap_unprepare
 compress_rootfs
 
