@@ -67,6 +67,8 @@ check_emulation_support()
         result=1
         return
     fi
+
+    echo "ok"
 }
 
 check_filesystem_support()
