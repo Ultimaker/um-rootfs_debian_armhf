@@ -6,7 +6,7 @@ ARM_EMU_BIN="${ARM_EMU_BIN:-}"
 BINFMT_MISC="${BINFMT_MISC:-/proc/sys/fs/binfmt_misc/}"
 
 FILESYSTEMS="overlay squashfs tmpfs"
-PACKAGES="apk mksquashfs xz"
+COMMANDS="apk mksquashfs xz"
 
 ARMv7_MAGIC="7f454c4601010100000000000000000002002800"
 
@@ -68,7 +68,7 @@ check_emulation_support()
         return
     fi
 
-    echo "ok"
+    echo "${ARM_EMU_BIN}: ok"
 }
 
 check_filesystem_support()
@@ -84,15 +84,15 @@ check_filesystem_support()
     done
 }
 
-check_package_installation()
+check_command_installation()
 {
-    for pkg in ${PACKAGES}; do
+    for pkg in ${COMMANDS}; do
         PATH="${PATH}:/sbin:/usr/sbin:/usr/local/sbin" command -V "${pkg}" || result=1
     done
 }
 
 echo "Checking build environment preconditions:"
-check_package_installation
+check_command_installation
 check_filesystem_support
 check_emulation_support
 

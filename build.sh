@@ -11,7 +11,7 @@ ALPINE_REPO="${ALPINE_REPO:-http://dl-cdn.alpinelinux.org/alpine}"
 TOOLBOX_IMAGE="${TOOLBOX_IMAGE:-um-update_toolbox.xz.img}"
 ROOTFS_DIR="${BUILD_DIR}/rootfs"
 
-PACKAGES="busybox e2fsprogs-extra f2fs-tools rsync sfdisk"
+COMMANDS="busybox e2fsprogs-extra f2fs-tools rsync sfdisk"
 
 cleanup()
 {
@@ -87,7 +87,7 @@ bootstrap_rootfs()
     # allow word splitting for ${PACKAGES}
     apk --root "${ROOTFS_DIR}" --update-cache \
        add --allow-untrusted --initdb --arch "${ARCH}" \
-       ${PACKAGES}
+       ${COMMANDS}
 
     # Add baselayout etc files
     echo "Adding baselayout"
