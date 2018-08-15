@@ -61,7 +61,15 @@ verify build environment:
   stage: verify
   <<: *environment_common
   script:
-  - docker run --privileged --rm -w /tests "$CI_COMMIT_SHA:$CI_PIPELINE_ID" ./buildenv.sh
+  - |
+    docker run \
+        --rm \
+        --privileged \
+        -e "ARM_EMU_BIN=${ARM_EMU_BIN}" \
+        -v "${ARM_EMU_BIN}:${ARM_EMU_BIN}:ro" \
+        -w /tests \
+        "$CI_COMMIT_SHA:$CI_PIPELINE_ID" \
+        sh -x ./buildenv.sh
 
 push build environment:
   <<: *environment_common
