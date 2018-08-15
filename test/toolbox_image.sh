@@ -3,15 +3,60 @@
 set -eu
 
 ARM_EMU_BIN="${ARM_EMU_BIN:-}"
-TMP_TEST_IMAGE_FILE="/tmp/test_file.img"
+
 SYSTEM_UPDATE_ENTRYPOINT="/sbin/startup.sh"
+DISK_PREPARE_COMMAND="/sbin/prepare_disk.sh"
+
+# Test storage device parameters.
+# All storage start and and parameters are sector numbers. actual byte positions
+# are calculated by multiplying the sector number with the sector size.
+STORAGE_DEVICE_IMG="/tmp/storage_device.img"
+BYTES_PER_SECTOR="512"
+STORAGE_DEVICE_SIZE="7553024" # sectors, about 3.6 GiB
+BOOT_START="2048"             # offset 1 MiB
+ROOTFS_START="67584"          # offset 33 MiB
+USERDATA_START="1998848"      # offset 976 MiB
+LOOP_STORAGE_DEVICE=""
+PARTITION_TABLE_FILE="/tmp/partition_table"
+
+TMP_TEST_IMAGE_FILE="/tmp/test_file.img"
 
 overlayfs_dir=""
 rootfs_dir=""
 
 result=0
 
+is_dev_setup_mounted=false
 exit_on_failure=false
+
+create_dummy_storage_device()
+{
+    echo "Creating test image: '${rootfs_dir}${STORAGE_DEVICE_IMG}'."
+    dd if="/dev/zero" of="${rootfs_dir}${STORAGE_DEVICE_IMG}" bs="1" count="0" \
+        seek="$((BYTES_PER_SECTOR * STORAGE_DEVICE_SIZE))"
+
+    echo "writing partition table:"
+
+    sfdisk "${rootfs_dir}${STORAGE_DEVICE_IMG}" << \
+______________________________________________________________________________________
+label: dos
+unit: sectors
+
+boot        : start=${BOOT_START},      size=$((ROOTFS_START - BOOT_START)),     Id=83
+rootfs      : start=${ROOTFS_START},    size=$((USERDATA_START - ROOTFS_START)), Id=83
+userdata    : start=${USERDATA_START},  size=$((STORAGE_DEVICE_SIZE - USERDATA_START)),  Id=83
+______________________________________________________________________________________
+
+    echo "formatting partitions"
+
+    LOOP_STORAGE_DEVICE="$(losetup --show --find --partscan "${rootfs_dir}${STORAGE_DEVICE_IMG}")"
+
+    mkfs.ext4 -q "${LOOP_STORAGE_DEVICE}p1"
+    mkfs.f2fs -q "${LOOP_STORAGE_DEVICE}p2"
+    mkfs.f2fs -q "${LOOP_STORAGE_DEVICE}p3"
+
+    echo "Successfully created dummy storage device: '${LOOP_STORAGE_DEVICE}'."
+}
 
 setup()
 {
@@ -40,7 +85,18 @@ setup()
     mount --bind /proc "${rootfs_dir}/proc" 1> /dev/null
     ln -s ../proc/self/mounts "${rootfs_dir}/etc/mtab"
 
+    if ! grep -qE "/dev.*devtmpfs" /proc/mounts; then
+        mount -t devtmpfs none "/dev"
+        is_dev_setup_mounted=true
+    fi
+
+    mount -t devtmpfs none "${rootfs_dir}/dev"
+
     dd if=/dev/zero of="${rootfs_dir}/${TMP_TEST_IMAGE_FILE}" bs=1 count=0 seek=128M 2> /dev/null
+
+    create_dummy_storage_device
+
+    sfdisk -d "${LOOP_STORAGE_DEVICE}" > "${rootfs_dir}${PARTITION_TABLE_FILE}"
 }
 
 teardown()
@@ -51,6 +107,19 @@ teardown()
         return
     fi
 
+    for partition_file in "${rootfs_dir}/tmp/partition_"*; do
+        echo "Deleting ${partition_file}"
+        unlink "${partition_file}"
+    done
+
+    if [ -b "${LOOP_STORAGE_DEVICE}" ]; then
+        losetup -d "${LOOP_STORAGE_DEVICE}"
+    fi
+
+    if [ -f "${rootfs_dir}${STORAGE_DEVICE_IMG}" ]; then
+        unlink "${rootfs_dir}${STORAGE_DEVICE_IMG}"
+    fi
+
     if [ -e "${rootfs_dir}/${ARM_EMU_BIN}" ]; then
         if grep -q "$(realpath "${rootfs_dir}/${ARM_EMU_BIN}")" "/proc/mounts"; then
             umount "${rootfs_dir}/${ARM_EMU_BIN}" || result=1
@@ -58,6 +127,14 @@ teardown()
         if [ -f "${rootfs_dir}/${ARM_EMU_BIN}" ]; then
             unlink "${rootfs_dir}/${ARM_EMU_BIN}" || result=1
         fi
+    fi
+
+    if grep -q "${rootfs_dir}/dev" /proc/mounts; then
+        umount "${rootfs_dir}/dev" || result=1
+    fi
+
+    if "${is_dev_setup_mounted}"; then
+        umount "/dev" || result=1
     fi
 
     if grep -q "${rootfs_dir}/proc" /proc/mounts; then
@@ -81,6 +158,12 @@ failure_exit()
     echo "  sudo sh -c '\\"
     echo "    umount '${rootfs_dir}/${ARM_EMU_BIN}' && \\"
     echo "    unlink '${rootfs_dir}/${ARM_EMU_BIN}' && \\"
+    echo "    losetup -d '${LOOP_STORAGE_DEVICE}' && \\"
+    echo "    unlink '${STORAGE_DEVICE_IMG}' && \\"
+    echo "    umount '${rootfs_dir}/dev' && \\"
+    echo "    if '${is_dev_setup_mounted}'; then \\"
+    echo "      umount '/dev' \\"
+    echo "    fi && \\"
     echo "    umount '${rootfs_dir}/proc' && \\"
     echo "    umount '${rootfs_dir}' && \\"
     echo "    rmdir '${rootfs_dir}' && \\"
@@ -97,6 +180,8 @@ run_test()
 {
     setup
 
+    echo "______________________________________________________________________________________"
+    echo
     echo "Run: ${1}"
     if "${1}"; then
         echo "Result - OK"
@@ -107,7 +192,7 @@ run_test()
             failure_exit
         fi
     fi
-    printf '\n'
+    echo "______________________________________________________________________________________"
 
     teardown
 }
@@ -167,6 +252,30 @@ test_execute_rsync()
 test_system_update_entrypoint()
 {
     test -x "${rootfs_dir}${SYSTEM_UPDATE_ENTRYPOINT}"
+}
+
+test_execute_resize_partition_grow_rootfs_ok()
+{
+    userdata_size="$((STORAGE_DEVICE_SIZE - USERDATA_START))"
+    new_userdata_size="$((userdata_size / 2))"
+    new_userdata_start="$((USERDATA_START + new_userdata_size))"
+
+    # In every line in the partition table look for a string "p3<don't care>type" and replace it with
+    # with new the new disk partition parameters defined above.
+    sed -i "s/p3.*type/p3 : start=     ${new_userdata_start}, size=     ${new_userdata_size}, type/" \
+        "${rootfs_dir}${PARTITION_TABLE_FILE}"
+
+    # sha512sum is executed in the chroot environment to avoid that rootfs dir is prefixed to the file path.
+    chroot "${rootfs_dir}" sha512sum "${PARTITION_TABLE_FILE}" > "${rootfs_dir}${PARTITION_TABLE_FILE}.sha512" || return 1
+    chroot "${rootfs_dir}" "${DISK_PREPARE_COMMAND}" -t "${PARTITION_TABLE_FILE}" "${LOOP_STORAGE_DEVICE}" || return 1
+
+    verification_partition_table_file="/tmp/verification_partition_table"
+    sfdisk -d "${LOOP_STORAGE_DEVICE}" > "${rootfs_dir}${verification_partition_table_file}"
+
+    # Remove the identifiers in the header because they will always change.
+    sed -i "s/label-id:.*//" "${rootfs_dir}${PARTITION_TABLE_FILE}"
+    sed -i "s/label-id:.*//" "${rootfs_dir}${verification_partition_table_file}"
+    diff "${rootfs_dir}${PARTITION_TABLE_FILE}" "${rootfs_dir}${verification_partition_table_file}" || return 1
 }
 
 usage()
@@ -232,6 +341,7 @@ run_test test_execute_resizef2fs
 run_test test_execute_mount
 run_test test_execute_rsync
 run_test test_system_update_entrypoint
+run_test test_execute_resize_partition_grow_rootfs_ok
 
 if [ "${result}" -ne 0 ]; then
    echo "ERROR: There where failures testing '${ROOTFS_IMG}'."
