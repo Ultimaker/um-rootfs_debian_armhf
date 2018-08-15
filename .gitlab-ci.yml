@@ -61,7 +61,7 @@ verify build environment:
   stage: verify
   <<: *environment_common
   script:
-    - docker run --rm -w /tests "$CI_COMMIT_SHA:$CI_PIPELINE_ID" ./buildenv.sh
+  - docker run --privileged --rm -w /tests "$CI_COMMIT_SHA:$CI_PIPELINE_ID" ./buildenv.sh
 
 push build environment:
   <<: *environment_common

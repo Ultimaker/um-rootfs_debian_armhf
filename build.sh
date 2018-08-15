@@ -81,7 +81,7 @@ bootstrap_rootfs()
 
     mkdir -p "${ROOTFS_DIR}/etc/apk"
     echo "${ALPINE_REPO}/${ALPINE_VERSION}/main" > "${ROOTFS_DIR}/etc/apk/repositories"
-    
+
     # Install rootfs with base applications
     # shellcheck disable=SC2086
     # allow word splitting for ${PACKAGES}
