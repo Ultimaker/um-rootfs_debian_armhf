@@ -265,6 +265,14 @@ test_system_update_entrypoint()
     test -x "${rootfs_dir}${SYSTEM_UPDATE_ENTRYPOINT}"
 }
 
+helper_test_disk_integrity()
+{
+    sfdisk -Vl "${LOOP_STORAGE_DEVICE}"
+    fsck -y "${LOOP_STORAGE_DEVICE}p1"
+    fsck "${LOOP_STORAGE_DEVICE}p2"
+    fsck "${LOOP_STORAGE_DEVICE}p3"
+}
+
 test_execute_resize_partition_grow_rootfs_ok()
 {
     userdata_size="$((STORAGE_DEVICE_SIZE - USERDATA_START))"
@@ -286,6 +294,8 @@ test_execute_resize_partition_grow_rootfs_ok()
     sed -i "s/label-id:.*//" "${rootfs_dir}${PARTITION_TABLE_FILE}"
     sed -i "s/label-id:.*//" "${rootfs_dir}${PARTITION_TABLE_FILE}.verify"
     diff "${rootfs_dir}${PARTITION_TABLE_FILE}" "${rootfs_dir}${PARTITION_TABLE_FILE}.verify" || return 1
+
+    helper_test_disk_integrity || return 1
 }
 
 usage()
