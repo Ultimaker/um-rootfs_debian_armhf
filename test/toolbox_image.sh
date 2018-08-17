@@ -312,6 +312,13 @@ test_system_update_entrypoint()
     test -x "${rootfs_dir}${SYSTEM_UPDATE_ENTRYPOINT}"
 }
 
+test_execute_disk_prepare_sha512_nok()
+{
+    chroot "${rootfs_dir}" sha512sum "${PARTITION_TABLE_FILE}" > "${rootfs_dir}${PARTITION_TABLE_FILE}.sha512"
+    echo "corrupted partition table data" >> "${rootfs_dir}${PARTITION_TABLE_FILE}"
+    chroot "${rootfs_dir}" "${DISK_PREPARE_COMMAND}" -t "${PARTITION_TABLE_FILE}" "${LOOP_STORAGE_DEVICE}" || return 0
+}
+
 test_execute_resize_partition_grow_rootfs_ok()
 {
     max_userdata_size="$((STORAGE_DEVICE_SIZE - USERDATA_START))"
@@ -394,6 +401,7 @@ run_test test_execute_resizef2fs
 run_test test_execute_mount
 run_test test_execute_rsync
 run_test test_system_update_entrypoint
+run_test test_execute_disk_prepare_sha512_nok
 run_test test_execute_resize_partition_grow_rootfs_ok
 
 if [ "${result}" -ne 0 ]; then
