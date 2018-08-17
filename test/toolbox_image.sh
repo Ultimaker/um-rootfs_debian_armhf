@@ -71,6 +71,11 @@ ________________________________________________________________________________
     mkfs.f2fs -q "${LOOP_STORAGE_DEVICE}p2"
     mkfs.f2fs -q "${LOOP_STORAGE_DEVICE}p3"
 
+    if ! test_disk_integrity; then
+        echo "Unrecoverable error creating dummy storage device: '${LOOP_STORAGE_DEVICE}'."
+        exit 1
+    fi
+
     echo "Successfully created dummy storage device: '${LOOP_STORAGE_DEVICE}'."
 }
 
