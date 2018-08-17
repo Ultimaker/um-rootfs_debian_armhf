@@ -29,6 +29,20 @@ result=0
 is_dev_setup_mounted=false
 exit_on_failure=false
 
+
+random_int()
+{
+    shuf -n 1 -i 0-"${1}"
+}
+
+test_disk_integrity()
+{
+    sfdisk -Vl "${LOOP_STORAGE_DEVICE}"
+    fsck -fn "${LOOP_STORAGE_DEVICE}p1"
+    fsck "${LOOP_STORAGE_DEVICE}p2"
+    fsck "${LOOP_STORAGE_DEVICE}p3"
+}
+
 create_dummy_storage_device()
 {
     echo "Creating test image: '${rootfs_dir}${STORAGE_DEVICE_IMG}'."
@@ -51,11 +65,17 @@ ________________________________________________________________________________
 
     LOOP_STORAGE_DEVICE="$(losetup --show --find --partscan "${rootfs_dir}${STORAGE_DEVICE_IMG}")"
 
-    mkfs.ext4 -q "${LOOP_STORAGE_DEVICE}p1" && fsck -y "${LOOP_STORAGE_DEVICE}p1"
-    mkfs.f2fs -q "${LOOP_STORAGE_DEVICE}p2" && fsck "${LOOP_STORAGE_DEVICE}p2"
-    mkfs.f2fs -q "${LOOP_STORAGE_DEVICE}p3" && fsck "${LOOP_STORAGE_DEVICE}p3"
+    mkfs.ext4 -q "${LOOP_STORAGE_DEVICE}p1"
+    mkfs.f2fs -q "${LOOP_STORAGE_DEVICE}p2"
+    mkfs.f2fs -q "${LOOP_STORAGE_DEVICE}p3"
+
+    if ! test_disk_integrity; then
+        echo "Something went wrong creating dummy storage device: '${LOOP_STORAGE_DEVICE}'."
+        return 1
+    fi
 
     echo "Successfully created dummy storage device: '${LOOP_STORAGE_DEVICE}'."
+    return 0
 }
 
 setup()
@@ -192,11 +212,10 @@ run_test()
     echo
     echo "Run: ${1}"
     echo
+    echo
     if "${1}"; then
-        echo
         echo "Result - OK"
     else
-        echo
         echo "Result - ERROR"
         result=1
         if "${exit_on_failure}"; then
@@ -265,27 +284,10 @@ test_system_update_entrypoint()
     test -x "${rootfs_dir}${SYSTEM_UPDATE_ENTRYPOINT}"
 }
 
-helper_test_disk_integrity()
+execute_prepare_disk()
 {
-    sfdisk -Vl "${LOOP_STORAGE_DEVICE}"
-    fsck -y "${LOOP_STORAGE_DEVICE}p1"
-    fsck "${LOOP_STORAGE_DEVICE}p2"
-    fsck "${LOOP_STORAGE_DEVICE}p3"
-}
-
-test_execute_resize_partition_grow_rootfs_ok()
-{
-    userdata_size="$((STORAGE_DEVICE_SIZE - USERDATA_START))"
-    new_userdata_size="$((userdata_size / 2))"
-    new_userdata_start="$((USERDATA_START + new_userdata_size))"
-
-    # In every line in the partition table look for a string "p3<don't care>type" and replace it with
-    # with new the new disk partition parameters defined above.
-    sed -i "s/p3.*type/p3 : start=     ${new_userdata_start}, size=     ${new_userdata_size}, type/" \
-        "${rootfs_dir}${PARTITION_TABLE_FILE}"
-
-    # sha512sum is executed in the chroot environment to avoid that rootfs dir is prefixed to the file path.
-    chroot "${rootfs_dir}" sha512sum "${PARTITION_TABLE_FILE}" > "${rootfs_dir}${PARTITION_TABLE_FILE}.sha512" || return 1
+    # Workaround to avoid having to deal with different workspaces, run sha512sum from within the ${rootfs_dir} workspace.
+    chroot "${rootfs_dir}" sha512sum "${PARTITION_TABLE_FILE}" > "${rootfs_dir}${PARTITION_TABLE_FILE}.sha512"
     chroot "${rootfs_dir}" "${DISK_PREPARE_COMMAND}" -t "${PARTITION_TABLE_FILE}" "${LOOP_STORAGE_DEVICE}" || return 1
 
     sfdisk -d "${LOOP_STORAGE_DEVICE}" > "${rootfs_dir}${PARTITION_TABLE_FILE}.verify"
@@ -294,15 +296,113 @@ test_execute_resize_partition_grow_rootfs_ok()
     sed -i "s/label-id:.*//" "${rootfs_dir}${PARTITION_TABLE_FILE}"
     sed -i "s/label-id:.*//" "${rootfs_dir}${PARTITION_TABLE_FILE}.verify"
     diff "${rootfs_dir}${PARTITION_TABLE_FILE}" "${rootfs_dir}${PARTITION_TABLE_FILE}.verify" || return 1
+}
 
-    helper_test_disk_integrity || return 1
+test_execute_disk_prepare_grow_boot_overlapping_rootfs_nok()
+{
+    # Get a size between the current size and current + rootfs size
+    rootfs_size="$((USERDATA_START - ROOTFS_START))"
+    random_size="$(random_int "${rootfs_size}")"
+    new_boot_size="$((BOOT_SIZE + random_size + 1))"
+
+    # In every line in the partition table look for a string "p1<don't care>type" and replace it with
+    # with new the new disk partition parameters defined above.
+    sed -i "s|${LOOP_STORAGE_DEVICE}p2.*type|${LOOP_STORAGE_DEVICE}p1 : start=     ${BOOT_START}, size=     ${new_boot_size}, type|" \
+        "${rootfs_dir}${PARTITION_TABLE_FILE}"
+
+    execute_prepare_disk || return 0
+}
+
+test_execute_disk_prepare_grow_rootfs_overlapping_userdata_nok()
+{
+    # Get a size between the current size and current + userdata size
+    userdata_size="$((STORAGE_DEVICE_SIZE - USERDATA_START))"
+    random_size="$(random_int "${userdata_size}")"
+    new_rootfs_size="$((BOOT_SIZE + random_size + 1))"
+
+    # In every line in the partition table look for a string "p2<don't care>type" and replace it with
+    # with new the new disk partition parameters defined above.
+    sed -i "s|${LOOP_STORAGE_DEVICE}p2.*type|${LOOP_STORAGE_DEVICE}p2 : start=     ${ROOTFS_START}, size=     ${new_rootfs_size}, type|" \
+        "${rootfs_dir}${PARTITION_TABLE_FILE}"
+
+    execute_prepare_disk || return 0
+}
+
+test_execute_disk_prepare_grow_boot_invalid_start_nok()
+{
+    new_boot_start="$(random_int "$((BOOT_START -1))")"
+    new_boot_size="$((ROOTFS_START - new_boot_start))"
+
+    # In every line in the partition table look for a string "p1<don't care>type" and replace it with
+    # with new the new disk partition parameters defined above.
+    sed -i "s|${LOOP_STORAGE_DEVICE}p1.*type|${LOOP_STORAGE_DEVICE}p1 : start=     ${new_boot_start}, size=     ${new_boot_size}, type|" \
+        "${rootfs_dir}${PARTITION_TABLE_FILE}"
+
+    execute_prepare_disk || return 0
+}
+
+test_execute_disk_prepare_grow_beyond_disk_end_nok()
+{
+    new_userdata_size="$((STORAGE_DEVICE_END - ROOTFS_START))"
+
+    # In every line in the partition table look for a string "p3<don't care>type" and replace it with
+    # with new the new disk partition parameters defined above.
+    sed -i "s|${LOOP_STORAGE_DEVICE}p3.*type|${LOOP_STORAGE_DEVICE}p3 : start=     ${USERDATA_START}, size=     ${new_userdata_size}, type|" \
+        "${rootfs_dir}${PARTITION_TABLE_FILE}"
+
+    execute_prepare_disk || return 0
+}
+
+test_execute_disk_prepare_grow_rootfs_ok()
+{
+    userdata_size="$((STORAGE_DEVICE_SIZE - USERDATA_START))"
+    new_userdata_size="$((userdata_size / 2))"
+    new_userdata_start="$((USERDATA_START + new_userdata_size))"
+    new_rootfs_size="$((new_userdata_start - ROOTFS_START))"
+
+    # In every line in the partition table look for a string "p2<don't care>type" and replace it with
+    # with new the new disk partition parameters defined above.
+    sed -i "s|${LOOP_STORAGE_DEVICE}p2.*type|${LOOP_STORAGE_DEVICE}p2 : start=       ${ROOTFS_START}, size=     ${new_rootfs_size}, type|" \
+        "${rootfs_dir}${PARTITION_TABLE_FILE}"
+    sed -i "s|${LOOP_STORAGE_DEVICE}p3.*type|${LOOP_STORAGE_DEVICE}p3 : start=     ${new_userdata_start}, size=     ${new_userdata_size}, type|" \
+        "${rootfs_dir}${PARTITION_TABLE_FILE}"
+
+    execute_prepare_disk || return 1
+    test_disk_integrity || return 1
+}
+
+test_execute_disk_prepare_grow_boot_ok()
+{
+    rootfs_size="$((USERDATA_START - ROOTFS_START))"
+    new_rootfs_size="$((rootfs_size / 2))"
+    new_rootfs_start="$((ROOTFS_START + new_rootfs_size))"
+    new_boot_size="$((new_rootfs_start + BOOT_START))"
+
+    # In every line in the partition table look for a string "p1<don't care>type" and replace it with
+    # with new the new disk partition parameters defined above.
+    sed -i "s|${LOOP_STORAGE_DEVICE}p1.*type|${LOOP_STORAGE_DEVICE}p1 : start=        ${BOOT_START}, size=     ${new_boot_size}, type|" \
+        "${rootfs_dir}${PARTITION_TABLE_FILE}"
+    sed -i "s|${LOOP_STORAGE_DEVICE}p2.*type|${LOOP_STORAGE_DEVICE}p2 : start=     ${new_rootfs_start}, size=      ${new_rootfs_size}, type|" \
+        "${rootfs_dir}${PARTITION_TABLE_FILE}"
+
+    execute_prepare_disk || return 1
+    test_disk_integrity || return 1
+  }
+
+test_execute_disk_prepare_sha512_nok()
+{
+    partition_table_file="/tmp/partition_table"
+    sfdisk -d "${rootfs_dir}${STORAGE_DEVICE_IMG}" > "${rootfs_dir}${partition_table_file}"
+    chroot "${rootfs_dir}" sha512sum "${PARTITION_TABLE_FILE}" > "${rootfs_dir}${PARTITION_TABLE_FILE}.sha512"
+    echo "corrupted partition table data" >> "${rootfs_dir}${partition_table_file}"
+    chroot "${rootfs_dir}" "${DISK_PREPARE_COMMAND}" -t "${partition_table_file}" "${LOOP_STORAGE_DEVICE}" || return 0
 }
 
 usage()
 {
 cat <<-EOT
 	Usage:   "${0}" [OPTIONS] <file.img>
-	    -e   Stop consequtive tests on failure without cleanup
+	    -e   Stop consecutive tests on failure without cleanup
 	    -h   Print usage
 	NOTE: This script requires root permissions to run.
 EOT
@@ -363,7 +463,13 @@ run_test test_execute_resizef2fs
 run_test test_execute_mount
 run_test test_execute_rsync
 run_test test_system_update_entrypoint
-run_test test_execute_resize_partition_grow_rootfs_ok
+run_test test_execute_disk_prepare_grow_boot_overlapping_rootfs_nok
+run_test test_execute_disk_prepare_grow_rootfs_overlapping_userdata_nok
+run_test test_execute_disk_prepare_grow_boot_invalid_start_nok
+run_test test_execute_disk_prepare_grow_beyond_disk_end_nok
+run_test test_execute_disk_prepare_grow_rootfs_ok
+run_test test_execute_disk_prepare_grow_boot_ok
+run_test test_execute_disk_prepare_sha512_nok
 
 if [ "${result}" -ne 0 ]; then
    echo "ERROR: There where failures testing '${ROOTFS_IMG}'."

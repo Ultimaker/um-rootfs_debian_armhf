@@ -107,6 +107,17 @@ check_command_installation()
     done
 }
 
+check_device_support()
+{
+    printf "urandom device file: "
+    if [ ! -c "/dev/urandom" ]; then
+        result=1
+        echo "doesn't exists"
+        return
+    fi
+    echo "exists"
+}
+
 echo "Checking build environment preconditions:"
 check_command_installation
 check_emulation_support
