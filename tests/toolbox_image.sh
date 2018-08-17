@@ -40,7 +40,7 @@ setup()
     mount --bind /proc "${rootfs_dir}/proc" 1> /dev/null
     ln -s ../proc/self/mounts "${rootfs_dir}/etc/mtab"
 
-    dd if=/dev/zero of="${rootfs_dir}/${TMP_TEST_IMAGE_FILE}" bs=32M count=4 2> /dev/null
+    dd if=/dev/zero of="${rootfs_dir}/${TMP_TEST_IMAGE_FILE}" bs=1 count=0 seek=128M 2> /dev/null
 }
 
 teardown()
