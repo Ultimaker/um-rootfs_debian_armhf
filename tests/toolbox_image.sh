@@ -117,9 +117,15 @@ test_execute_busybox()
     chroot "${rootfs_dir}" /bin/busybox true
 }
 
-test_execute_fdisk()
+test_execute_sha512()
 {
-    chroot "${rootfs_dir}" /sbin/fdisk -l "${TMP_TEST_IMAGE_FILE}" 1> /dev/null
+    chroot "${rootfs_dir}" sha512sum /bin/busybox > "${rootfs_dir}${TMP_TEST_IMAGE_FILE}"
+    chroot "${rootfs_dir}" sha512sum -csw "${TMP_TEST_IMAGE_FILE}"
+}
+
+test_execute_sfdisk()
+{
+    chroot "${rootfs_dir}" /sbin/sfdisk -l "${TMP_TEST_IMAGE_FILE}" 1> /dev/null
 }
 
 test_execute_mkfs_ext4()
@@ -217,7 +223,8 @@ fi
 
 echo "Running tests on '${ROOTFS_IMG}'."
 run_test test_execute_busybox
-run_test test_execute_fdisk
+run_test test_execute_sha512
+run_test test_execute_sfdisk
 run_test test_execute_mkfs_ext4
 run_test test_execute_resize2fs
 run_test test_execute_mkfs_f2fs
