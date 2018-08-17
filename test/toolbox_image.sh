@@ -51,9 +51,9 @@ ________________________________________________________________________________
 
     LOOP_STORAGE_DEVICE="$(losetup --show --find --partscan "${rootfs_dir}${STORAGE_DEVICE_IMG}")"
 
-    mkfs.ext4 -q "${LOOP_STORAGE_DEVICE}p1"
-    mkfs.f2fs -q "${LOOP_STORAGE_DEVICE}p2"
-    mkfs.f2fs -q "${LOOP_STORAGE_DEVICE}p3"
+    mkfs.ext4 -q "${LOOP_STORAGE_DEVICE}p1" && fsck -y "${LOOP_STORAGE_DEVICE}p1"
+    mkfs.f2fs -q "${LOOP_STORAGE_DEVICE}p2" && fsck "${LOOP_STORAGE_DEVICE}p2"
+    mkfs.f2fs -q "${LOOP_STORAGE_DEVICE}p3" && fsck "${LOOP_STORAGE_DEVICE}p3"
 
     echo "Successfully created dummy storage device: '${LOOP_STORAGE_DEVICE}'."
 }
@@ -191,9 +191,12 @@ run_test()
     echo "______________________________________________________________________________________"
     echo
     echo "Run: ${1}"
+    echo
     if "${1}"; then
+        echo
         echo "Result - OK"
     else
+        echo
         echo "Result - ERROR"
         result=1
         if "${exit_on_failure}"; then
