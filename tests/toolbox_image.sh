@@ -53,10 +53,10 @@ teardown()
 
     if [ -e "${rootfs_dir}/${ARM_EMU_BIN}" ]; then
         if grep -q "$(realpath "${rootfs_dir}/${ARM_EMU_BIN}")" "/proc/mounts"; then
-            umount "${rootfs_dir}/${ARM_EMU_BIN}"
+            umount "${rootfs_dir}/${ARM_EMU_BIN}" || result=1
         fi
         if [ -f "${rootfs_dir}/${ARM_EMU_BIN}" ]; then
-            unlink "${rootfs_dir}/${ARM_EMU_BIN}"
+            unlink "${rootfs_dir}/${ARM_EMU_BIN}" || result=1
         fi
     fi
 
