@@ -5,7 +5,7 @@
 #
 # SPDX-License-Identifier: AGPL-3.0+
 
-FROM registry.hub.docker.com/library/alpine:latest
+FROM registry.hub.docker.com/library/alpine:edge
 
 LABEL Maintainer="software-embedded-platform@ultimaker.com" \
       Comment="Ultimaker update-tools filesystem"
