@@ -67,7 +67,7 @@ add_update_scripts()
         exit 1
     fi
 
-    for script in "${local_script_dir}"/*; do
+    for script in "${local_script_dir}"/*.sh; do
         basename="${script##*/}"
         echo "Installing ${script} on '${target_script_dir}/${basename}'."
         cp "${script}" "${target_script_dir}/${basename}"
