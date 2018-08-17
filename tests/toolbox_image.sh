@@ -125,23 +125,27 @@ test_execute_fdisk()
 test_execute_mkfs_ext4()
 {
     chroot "${rootfs_dir}" /sbin/mkfs.ext4 "${TMP_TEST_IMAGE_FILE}" 1> /dev/null
+    chroot "${rootfs_dir}" /sbin/fsck.ext4 -fn "${TMP_TEST_IMAGE_FILE}" 1> /dev/null
 }
 
 test_execute_resize2fs()
 {
     test_execute_mkfs_ext4
     chroot "${rootfs_dir}" /usr/sbin/resize2fs "${TMP_TEST_IMAGE_FILE}" 1> /dev/null
+    chroot "${rootfs_dir}" /sbin/fsck.ext4 -fn "${TMP_TEST_IMAGE_FILE}" 1> /dev/null
 }
 
 test_execute_mkfs_f2fs()
 {
     chroot "${rootfs_dir}" /usr/sbin/mkfs.f2fs "${TMP_TEST_IMAGE_FILE}" 1> /dev/null
+    chroot "${rootfs_dir}" /usr/sbin/fsck.f2fs "${TMP_TEST_IMAGE_FILE}" 1> /dev/null
 }
 
 test_execute_resizef2fs()
 {
     test_execute_mkfs_f2fs
     chroot "${rootfs_dir}" /usr/sbin/resize.f2fs "${TMP_TEST_IMAGE_FILE}" 1> /dev/null
+    chroot "${rootfs_dir}" /usr/sbin/fsck.f2fs "${TMP_TEST_IMAGE_FILE}" 1> /dev/null
 }
 
 test_execute_mount()
