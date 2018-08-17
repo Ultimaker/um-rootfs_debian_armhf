@@ -35,6 +35,16 @@ result=0
 is_dev_setup_mounted=false
 exit_on_failure=false
 
+test_disk_integrity()
+{
+    # All return codes not 0 should be considered an error, since prepare_disk
+    # should have fixed any potential filesystem error.
+    sfdisk -Vl "${LOOP_STORAGE_DEVICE}" || return 1
+    fsck.ext4 -fn "${LOOP_STORAGE_DEVICE}p1" || return 1
+    fsck.f2fs "${LOOP_STORAGE_DEVICE}p2" || return 1
+    fsck.f2fs "${LOOP_STORAGE_DEVICE}p3" || return 1
+}
+
 create_dummy_storage_device()
 {
     echo "Creating test image: '${rootfs_dir}${STORAGE_DEVICE_IMG}'."
@@ -289,6 +299,8 @@ test_execute_resize_partition_grow_rootfs_ok()
     sed -i "s/label-id:.*//" "${rootfs_dir}${PARTITION_TABLE_FILE}"
     sed -i "s/label-id:.*//" "${rootfs_dir}${PARTITION_TABLE_FILE}.verify"
     diff "${rootfs_dir}${PARTITION_TABLE_FILE}" "${rootfs_dir}${PARTITION_TABLE_FILE}.verify" || return 1
+
+    test_disk_integrity || return 1
 }
 
 usage()
