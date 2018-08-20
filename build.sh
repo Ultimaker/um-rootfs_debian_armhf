@@ -11,7 +11,7 @@ ALPINE_REPO="${ALPINE_REPO:-http://dl-cdn.alpinelinux.org/alpine}"
 TOOLBOX_IMAGE="${TOOLBOX_IMAGE:-um-update_toolbox.xz.img}"
 ROOTFS_DIR="${BUILD_DIR}/rootfs"
 
-PACKAGES="busybox e2fsprogs-extra f2fs-tools rsync"
+PACKAGES="busybox e2fsprogs-extra f2fs-tools rsync sfdisk"
 
 cleanup()
 {
@@ -67,7 +67,7 @@ add_update_scripts()
         exit 1
     fi
 
-    for script in "${local_script_dir}"/*; do
+    for script in "${local_script_dir}"/*.sh; do
         basename="${script##*/}"
         echo "Installing ${script} on '${target_script_dir}/${basename}'."
         cp "${script}" "${target_script_dir}/${basename}"
