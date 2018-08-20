@@ -9,4 +9,4 @@ RUN apk add --no-cache \
     && \
     rm -f /var/cache/apk/*
 
-COPY tests/buildenv.sh /tests/buildenv.sh
+COPY test/buildenv.sh /test/buildenv.sh
