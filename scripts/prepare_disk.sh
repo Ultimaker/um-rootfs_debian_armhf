@@ -62,7 +62,7 @@ partition_resize()
     fi
 
     sfdisk "${TARGET_DISK}" < "${PARTITION_TABLE_FILE}"
-    partprobe "${PARTITION_TABLE_FILE}"
+    partprobe "${TARGET_DISK}"
 }
 
 while getopts ":t:h" options; do
