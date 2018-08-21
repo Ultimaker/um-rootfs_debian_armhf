@@ -119,7 +119,7 @@ cleanup_build_environment:
 # multiple build package jobs are defined in order to catch all the scenarios and avoid
 # multiple build job execution.
 # ==================
-.build_pkg_common: &pkg_common
+.build_pkg_common: &build_pkg_common
   <<: *parameters_common
   variables:
     GIT_SUBMODULE_STRATEGY: recursive
@@ -132,20 +132,7 @@ cleanup_build_environment:
     - ./.build_*/um-update*.xz.img
     expire_in: 3 days
 
-
-# Build the package on a non-master branch in a modified Docker image.
-build:dev_pkg:
-  <<: *pkg_common
-  except:
-    - master
-  only:
-    variables:
-      - $CI_COMMIT_MESSAGE =~ /dockerimage/i
-  image: "${CI_COMMIT_SHA}:${CI_PIPELINE_ID}"
-
-# Build the package on a non-master branch in the latest Docker image.
-build:dev_pkg_latest:
-  <<: *pkg_common
+.dev_docker_latest: &dev_docker_latest
   except:
     refs:
       - master
@@ -153,20 +140,55 @@ build:dev_pkg_latest:
       - $CI_COMMIT_MESSAGE =~ /dockerimage/i
   image: "${CI_REGISTRY_IMAGE}:latest"
 
-# Build the package on a the master branch in the latest Docker image.
-build:master_pkg:
-  <<: *pkg_common
+.dev_docker_candidate: &dev_docker_candidate
+    except:
+      - master
+    only:
+      variables:
+        - $CI_COMMIT_MESSAGE =~ /dockerimage/i
+    image: "${CI_COMMIT_SHA}:${CI_PIPELINE_ID}"
+
+.master_docker_latest: &master_docker_latest
   only:
     - master
   image: "${CI_REGISTRY_IMAGE}:latest"
 
+# Build the package on a non-master branch in a modified Docker image.
+build:dev_docker_candidate:
+  <<: *build_pkg_common
+  <<: *dev_docker_candidate
+
+# Build the package on a non-master branch in the latest Docker image.
+build:dev_docker_latest:
+  <<: *build_pkg_common
+  <<: *dev_docker_latest
+
+# Build the package on a the master branch in the latest Docker image.
+build:master_docker_latest:
+  <<: *build_pkg_common
+  <<: *master_docker_latest
+
 # Test package
-test_pkg:
+.test_pkg_common: &test_pkg_common
   stage: test
   dependencies:
-    - build:dev_pkg
-    - build:dev_pkg_latest
-    - build:master_pkg
+    - build:dev_docker_candidate
+    - build:dev_docker_latest
+    - build:master_docker_latest
   script:
     - ./test/toolbox_image.sh .build_*/um-update*.xz.img
 
+# Test the package on a non-master branch in a modified Docker image.
+test:dev_docker_candidate:
+ <<: *test_pkg_common
+ <<: *dev_docker_candidate
+
+# Test the package on a non-master branch in the latest Docker image.
+test:dev_docker_latest:
+ <<: *test_pkg_common
+ <<: *dev_docker_latest
+
+# Test the package on a the master branch in the latest Docker image.
+test:master_docker_latest:
+ <<: *test_pkg_common
+ <<: *master_docker_latest
