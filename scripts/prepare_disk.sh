@@ -56,7 +56,7 @@ partition_resize()
         fi
     done < "${PARTITION_TABLE_FILE}"
 
-    if "${boot_partition_available}"; then
+    if ! "${boot_partition_available}"; then
         echo "Error, no boot partition available, cannot continue."
         exit 1
     fi
