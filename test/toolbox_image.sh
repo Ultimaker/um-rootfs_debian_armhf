@@ -108,7 +108,6 @@ teardown()
     fi
 
     for partition_file in "${rootfs_dir}/tmp/partition_"*; do
-        echo "Deleting ${partition_file}"
         unlink "${partition_file}"
     done
 
