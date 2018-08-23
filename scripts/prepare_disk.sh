@@ -32,6 +32,40 @@ is_comment()
     test -z "${1%%#*}"
 }
 
+# Returns 0 when resize is needed and 1 if not needed.
+is_resize_needed()
+{
+    current_partition_table_file="$(mktemp)"
+    sfdisk -d "${TARGET_DISK}" > "${current_partition_table_file}"
+
+    while IFS="${IFS}:=," read -r table_label _ table_start _ table_size _; do
+        if is_comment "${table_label}" || ! is_integer "${table_start}" || \
+            ! is_integer "${table_size}"; then
+            continue
+        fi
+
+        while IFS="${IFS}:=," read -r disk_label _ disk_start _ disk_size _; do
+            if is_comment "${disk_label}" || ! is_integer "${disk_start}" || \
+                ! is_integer "${disk_size}"; then
+                continue
+            fi
+
+            if [ "${table_label}" != "${disk_label}" ]; then
+                continue
+            fi
+
+            if [ "${table_start}" -ne "${disk_start}" ] || \
+               [ "${table_size}" -ne "${disk_size}" ]; then
+                unlink "${current_partition_table_file}"
+                return 0
+            fi
+        done < "${current_partition_table_file}"
+    done < "${PARTITION_TABLE_FILE}"
+
+    unlink "${current_partition_table_file}"
+    return 1
+}
+
 partition_sync()
 {
     i=10
@@ -200,6 +234,12 @@ fi
 if [ ! -b "${TARGET_DISK}" ]; then
     echo "Error, block device '${TARGET_DISK}' does not exist."
     exit 1
+fi
+
+resize_needed="$(is_resize_needed; echo "${?}")"
+if [ "${resize_needed}" -eq 1 ]; then
+    echo "Partition resize not required."
+    exit 0
 fi
 
 partition_resize

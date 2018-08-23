@@ -336,6 +336,12 @@ test_execute_resize_partition_grow_rootfs_ok()
     test_disk_integrity || return 1
 }
 
+test_execute_disk_prepare_resize_not_needed_ok()
+{
+    execute_prepare_disk || return 1
+    test_disk_integrity || return 1
+}
+
 usage()
 {
 cat <<-EOT
@@ -403,6 +409,8 @@ run_test test_execute_rsync
 run_test test_system_update_entrypoint
 run_test test_execute_disk_prepare_sha512_nok
 run_test test_execute_resize_partition_grow_rootfs_ok
+run_test test_execute_disk_prepare_resize_not_needed_ok
+
 
 if [ "${result}" -ne 0 ]; then
    echo "ERROR: There where failures testing '${ROOTFS_IMG}'."
