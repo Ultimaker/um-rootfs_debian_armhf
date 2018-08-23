@@ -175,6 +175,15 @@ failure_exit()
     exit "${result}"
 }
 
+cleanup()
+{
+    if "${exit_on_failure}"; then
+        failure_exit
+    else
+        teardown
+    fi
+}
+
 run_test()
 {
     setup
@@ -188,7 +197,7 @@ run_test()
         echo "Result - ERROR"
         result=1
         if "${exit_on_failure}"; then
-            failure_exit
+            exit "${result}"
         fi
     fi
     echo "______________________________________________________________________________________"
@@ -327,6 +336,8 @@ if [ "$(id -u)" -ne 0 ]; then
     echo "See ${0} -h for more info."
     exit 1
 fi
+
+trap cleanup EXIT
 
 echo "Running tests on '${ROOTFS_IMG}'."
 run_test test_execute_busybox
