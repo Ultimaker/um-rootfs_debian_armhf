@@ -6,12 +6,28 @@ ARM_EMU_BIN="${ARM_EMU_BIN:-}"
 BINFMT_MISC="${BINFMT_MISC:-/proc/sys/fs/binfmt_misc/}"
 
 FILESYSTEMS="ext4 f2fs overlay squashfs tmpfs"
-COMMANDS="apk mkfs.ext4 mkfs.f2fs mksquashfs sed sfdisk xz"
+COMMANDS="apk losetup mkfs.ext4 mkfs.f2fs mksquashfs sed sfdisk xz"
 
 ARMv7_MAGIC="7f454c4601010100000000000000000002002800"
 
 result=0
 
+
+check_loopdevice_support()
+{
+    printf "loopdevice support: "
+
+    PATH="${PATH}:/sbin:/usr/sbin:/usr/local/sbin" command losetup -f 1> /dev/null || { result=1; return; }
+
+    for loopdevice in "/dev/loop"*; do
+        if [ -b "${loopdevice}" ]; then
+            echo "ok"
+            return
+        fi
+    done
+    echo "error, no loopdevice"
+    result=1
+}
 
 check_emulation_support()
 {
@@ -93,8 +109,9 @@ check_command_installation()
 
 echo "Checking build environment preconditions:"
 check_command_installation
-check_filesystem_support
 check_emulation_support
+check_filesystem_support
+check_loopdevice_support
 
 if [ "${result}" -ne 0 ]; then
     echo "ERROR: Missing preconditions, cannot continue."
