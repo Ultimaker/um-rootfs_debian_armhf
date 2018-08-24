@@ -22,6 +22,24 @@ usage()
     echo "NOTE: This script is destructive and will destroy your data."
 }
 
+partition_sync()
+{
+    i=10
+    while [ "${i}" -gt 0 ]; do
+        if partprobe "${TARGET_DISK}"; then
+            return
+        fi
+
+        echo "Partprobe failed, retrying."
+        sleep 1
+
+        i=$((i - 1))
+    done
+
+    echo "Partprobe failed, giving up."
+    return 1
+}
+
 partition_resize()
 {
     if ! sha512sum -csw "${PARTITION_TABLE_FILE}.sha512"; then
@@ -62,7 +80,6 @@ partition_resize()
     fi
 
     sfdisk --quiet "${TARGET_DISK}" < "${PARTITION_TABLE_FILE}"
-    partprobe "${TARGET_DISK}"
 }
 
 while getopts ":t:h" options; do
@@ -106,5 +123,6 @@ if [ ! -r "${PARTITION_TABLE_FILE}" ]; then
 fi
 
 partition_resize
+partition_sync
 
 exit 0
