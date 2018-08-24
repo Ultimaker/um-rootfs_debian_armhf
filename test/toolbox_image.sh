@@ -107,8 +107,7 @@ teardown()
         return
     fi
 
-    for partition_file in "${rootfs_dir}/tmp/partition_"*; do
-        echo "Deleting ${partition_file}"
+    for partition_file in "${rootfs_dir}${PARTITION_TABLE_FILE}"*; do
         unlink "${partition_file}"
     done
 
@@ -176,6 +175,15 @@ failure_exit()
     exit "${result}"
 }
 
+cleanup()
+{
+    if "${exit_on_failure}"; then
+        failure_exit
+    else
+        teardown
+    fi
+}
+
 run_test()
 {
     setup
@@ -189,7 +197,7 @@ run_test()
         echo "Result - ERROR"
         result=1
         if "${exit_on_failure}"; then
-            failure_exit
+            exit "${result}"
         fi
     fi
     echo "______________________________________________________________________________________"
@@ -269,13 +277,12 @@ test_execute_resize_partition_grow_rootfs_ok()
     chroot "${rootfs_dir}" sha512sum "${PARTITION_TABLE_FILE}" > "${rootfs_dir}${PARTITION_TABLE_FILE}.sha512" || return 1
     chroot "${rootfs_dir}" "${DISK_PREPARE_COMMAND}" -t "${PARTITION_TABLE_FILE}" "${LOOP_STORAGE_DEVICE}" || return 1
 
-    verification_partition_table_file="/tmp/verification_partition_table"
-    sfdisk -d "${LOOP_STORAGE_DEVICE}" > "${rootfs_dir}${verification_partition_table_file}"
+    sfdisk -d "${LOOP_STORAGE_DEVICE}" > "${rootfs_dir}${PARTITION_TABLE_FILE}.verify"
 
     # Remove the identifiers in the header because they will always change.
     sed -i "s/label-id:.*//" "${rootfs_dir}${PARTITION_TABLE_FILE}"
-    sed -i "s/label-id:.*//" "${rootfs_dir}${verification_partition_table_file}"
-    diff "${rootfs_dir}${PARTITION_TABLE_FILE}" "${rootfs_dir}${verification_partition_table_file}" || return 1
+    sed -i "s/label-id:.*//" "${rootfs_dir}${PARTITION_TABLE_FILE}.verify"
+    diff "${rootfs_dir}${PARTITION_TABLE_FILE}" "${rootfs_dir}${PARTITION_TABLE_FILE}.verify" || return 1
 }
 
 usage()
@@ -329,6 +336,8 @@ if [ "$(id -u)" -ne 0 ]; then
     echo "See ${0} -h for more info."
     exit 1
 fi
+
+trap cleanup EXIT
 
 echo "Running tests on '${ROOTFS_IMG}'."
 run_test test_execute_busybox

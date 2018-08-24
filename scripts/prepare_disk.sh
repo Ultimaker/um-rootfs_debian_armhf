@@ -17,13 +17,41 @@ usage()
 {
     echo "Usage: ${0} [OPTIONS] <DISK>"
     echo "Prepare the target DISK to a predefined disk layout."
-    echo "  -t Partition table file (mandatory)."
+    echo "  -t Partition table file (mandatory)"
     echo "  -h Print this help text and exit"
     echo "NOTE: This script is destructive and will destroy your data."
 }
 
+partition_sync()
+{
+    i=10
+    while [ "${i}" -gt 0 ]; do
+        if partprobe "${TARGET_DISK}"; then
+            return
+        fi
+
+        echo "Partprobe failed, retrying."
+        sleep 1
+
+        i=$((i - 1))
+    done
+
+    echo "Partprobe failed, giving up."
+    return 1
+}
+
 partition_resize()
 {
+    is_integer()
+    {
+        test "${1}" -eq "${1}" 2> /dev/null
+    }
+
+    is_comment()
+    {
+        test -z "${1%%#*}"
+    }
+
     if ! sha512sum -csw "${PARTITION_TABLE_FILE}.sha512"; then
         echo "Error processing partition table: crc error."
         exit 1
@@ -33,13 +61,9 @@ partition_resize()
 
     # Temporally expand the Input Field Separator with ':=,' and treat them
     # as whitespaces, in other words, ignore them.
-    while IFS="${IFS}:=," read -r label _ start _ size _ _ _; do
-        # Invalidate lines that are: empty, start with #, start and size that
-        # are not integers by using an inverse integer comparison test.
-        if [ -z "${label}" ] || \
-           [ -z "${label%%#*}" ] || \
-           ! [ "${start}" -eq "${start}" ] 2> /dev/null || \
-           ! [ "${size}" -eq "${size}" ] 2> /dev/null; then
+    while IFS="${IFS}:=," read -r label _ start _ size _; do
+        if [ -z "${label}" ] || is_comment "${label}" || \
+           ! is_integer "${start}" || ! is_integer "${size}"; then
             continue
         fi
 
@@ -49,7 +73,7 @@ partition_resize()
 
         partition_end="$((start + size))"
         # sfdisk returns size in blocks, * (1024 / 512) converts to sectors
-        target_disk_end="$(($(sfdisk -s "${TARGET_DISK}" 2> /dev/null) * 2))"
+        target_disk_end="$(($(sfdisk --quiet --show-size "${TARGET_DISK}" 2> /dev/null) * 2))"
         if [ "${partition_end}" -gt "${target_disk_end}" ]; then
             echo "Partition '${label}' is beyond the size of the disk (${partition_end} > ${target_disk_end}), cannot continue."
             exit 1
@@ -61,8 +85,7 @@ partition_resize()
         exit 1
     fi
 
-    sfdisk "${TARGET_DISK}" < "${PARTITION_TABLE_FILE}"
-    partprobe "${TARGET_DISK}"
+    sfdisk --quiet "${TARGET_DISK}" < "${PARTITION_TABLE_FILE}"
 }
 
 while getopts ":t:h" options; do
@@ -106,5 +129,6 @@ if [ ! -r "${PARTITION_TABLE_FILE}" ]; then
 fi
 
 partition_resize
+partition_sync
 
 exit 0
