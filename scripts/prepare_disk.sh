@@ -66,21 +66,27 @@ partitions_format()
                 echo "Attempting to resize partition ${TARGET_DISK}${partition}"
                 case "${fstype}" in
                 ext4)
-                    fsck_cmd="fsck.ext4 -f -p"
-                    mkfs_cmd="mkfs.ext4 -L ${table_label}"
+                    fsck_cmd="fsck.ext4 -f -y"
+                    fsck_ret_ok="1"
+                    mkfs_cmd="mkfs.ext4 -F -L ${table_label}"
                     resize_cmd="resize2fs"
                     ;;
                 f2fs)
                     fsck_cmd="fsck.f2fs -f -p -y"
-                    mkfs_cmd="mkfs.f2fs -l ${table_label}"
+                    fsck_ret_ok="0"
+                    mkfs_cmd="mkfs.f2fs -f -l ${table_label}"
                     resize_cmd="resize.f2fs"
                     ;;
                 esac
 
-                if ! eval "${fsck_cmd}" "${TARGET_DISK}${partition}" && \
-                   eval "${resize_cmd}" "${TARGET_DISK}${partition}"; then
-                    echo "Resize failed, formatting instead."
-                    eval "${mkfs_cmd}" "${TARGET_DISK}${partition}"
+                # In some cases of fsck, other values then 0 are acceptable,
+                # as such we need to capture the return value or else set -u
+                # will trigger eval as a failure and abort the script.
+                fsck_status="$(eval "${fsck_cmd}" "${TARGET_DISK}${partition}" 1> /dev/null; echo "${?}")"
+                if [ "${fsck_ret_ok}" -ge "${fsck_status}" ] && \
+                   ! eval "${resize_cmd}" "${TARGET_DISK}${partition}"; then
+                        echo "Resize failed, formatting instead."
+                        eval "${mkfs_cmd}" "${TARGET_DISK}${partition}"
                 fi
             else
                 echo "Formatting ${TARGET_DISK}${partition}"
