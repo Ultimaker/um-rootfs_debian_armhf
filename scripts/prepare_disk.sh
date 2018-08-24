@@ -17,7 +17,7 @@ usage()
 {
     echo "Usage: ${0} [OPTIONS] <DISK>"
     echo "Prepare the target DISK to a predefined disk layout."
-    echo "  -t Partition table file (mandatory)."
+    echo "  -t Partition table file (mandatory)"
     echo "  -h Print this help text and exit"
     echo "NOTE: This script is destructive and will destroy your data."
 }
