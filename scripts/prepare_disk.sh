@@ -49,7 +49,7 @@ partition_resize()
 
         partition_end="$((start + size))"
         # sfdisk returns size in blocks, * (1024 / 512) converts to sectors
-        target_disk_end="$(($(sfdisk -s "${TARGET_DISK}" 2> /dev/null) * 2))"
+        target_disk_end="$(($(sfdisk --quiet --show-size "${TARGET_DISK}" 2> /dev/null) * 2))"
         if [ "${partition_end}" -gt "${target_disk_end}" ]; then
             echo "Partition '${label}' is beyond the size of the disk (${partition_end} > ${target_disk_end}), cannot continue."
             exit 1
@@ -61,7 +61,7 @@ partition_resize()
         exit 1
     fi
 
-    sfdisk "${TARGET_DISK}" < "${PARTITION_TABLE_FILE}"
+    sfdisk --quiet "${TARGET_DISK}" < "${PARTITION_TABLE_FILE}"
     partprobe "${TARGET_DISK}"
 }
 
