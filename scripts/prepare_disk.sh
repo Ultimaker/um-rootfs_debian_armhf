@@ -42,6 +42,16 @@ partition_sync()
 
 partition_resize()
 {
+    is_integer()
+    {
+        test "${1}" -eq "${1}" 2> /dev/null
+    }
+
+    is_comment()
+    {
+        test -z "${1%%#*}"
+    }
+
     if ! sha512sum -csw "${PARTITION_TABLE_FILE}.sha512"; then
         echo "Error processing partition table: crc error."
         exit 1
@@ -51,13 +61,9 @@ partition_resize()
 
     # Temporally expand the Input Field Separator with ':=,' and treat them
     # as whitespaces, in other words, ignore them.
-    while IFS="${IFS}:=," read -r label _ start _ size _ _ _; do
-        # Invalidate lines that are: empty, start with #, start and size that
-        # are not integers by using an inverse integer comparison test.
-        if [ -z "${label}" ] || \
-           [ -z "${label%%#*}" ] || \
-           ! [ "${start}" -eq "${start}" ] 2> /dev/null || \
-           ! [ "${size}" -eq "${size}" ] 2> /dev/null; then
+    while IFS="${IFS}:=," read -r label _ start _ size _; do
+        if [ -z "${label}" ] || is_comment "${label}" || \
+           ! is_integer "${start}" || ! is_integer "${size}"; then
             continue
         fi
 
