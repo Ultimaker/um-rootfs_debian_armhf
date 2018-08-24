@@ -40,6 +40,61 @@ partition_sync()
     return 1
 }
 
+partitions_format()
+{
+    # Parse the output of sfdisk and temporally expand the Input Field Separator
+    # with ':=,' and treat them as whitespaces, in other words, ignore them.
+    sfdisk --quiet -d "${TARGET_DISK}" | \
+    while IFS="${IFS}:=," read -r disk_label _ disk_start _ disk_size _; do
+        while IFS="${IFS}:=," read -r table_label _ table_start _ table_size _; do
+            if [ -z "${disk_start}" ] || [ -z "${table_start}" ] || \
+               [ "${disk_start}" != "${table_start}" ]; then
+                continue
+            fi
+
+            if grep -q "${disk_label}" /proc/mounts; then
+                umount "${disk_label}"
+            fi
+
+            # Get the partition number from the label. e.g. /dev/loop0p1 -> p1
+	    # by grouping p with 1 or more digits and only printing the matchh
+            # and then format the partition. If the partition was already valid,
+            # just resize the existing one. If fsck or resize fails, reformat.
+            partition="$(echo "${disk_label}" | sed -rn 's/.*(p[[:digit:]]+$)/\1/p')"
+            if fstype="$(blkid -o value -s TYPE "${TARGET_DISK}${partition}")"; then
+                echo "Attempting to resize partition ${TARGET_DISK}${partition}"
+                case "${fstype}" in
+                ext4)
+                    fsck_cmd="fsck.ext4 -f -p"
+                    mkfs_cmd="mkfs.ext4 -L ${table_label}"
+                    resize_cmd="resize2fs"
+                    ;;
+                f2fs)
+                    fsck_cmd="fsck.f2fs -f -p -y"
+                    mkfs_cmd="mkfs.f2fs -l ${table_label}"
+                    resize_cmd="resize.f2fs -d 9"
+                    ;;
+                esac
+
+                if ! eval "${fsck_cmd}" "${TARGET_DISK}${partition}" && \
+                   eval "${resize_cmd}" "${TARGET_DISK}${partition}"; then
+                    echo "Resize failed, formatting instead."
+                    eval "${mkfs_cmd}" "${TARGET_DISK}${partition}"
+                fi
+            else
+                echo "Formatting ${TARGET_DISK}${partition}"
+                if [ "${disk_start}" -eq "${BOOT_PARTITION_START}" ]; then
+                    mkfs_cmd="mkfs.ext4 -L ${table_label}"
+                else
+                    mkfs_cmd="mkfs.f2fs -l ${table_label}"
+                fi
+
+                eval "${mkfs_cmd}" "${TARGET_DISK}${partition}"
+            fi
+        done < "${PARTITION_TABLE_FILE}"
+    done
+}
+
 partition_resize()
 {
     is_integer()
@@ -130,5 +185,6 @@ fi
 
 partition_resize
 partition_sync
+partitions_format
 
 exit 0
