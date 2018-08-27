@@ -57,10 +57,11 @@ partitions_format()
             fi
 
             # Get the partition number from the label. e.g. /dev/loop0p1 -> p1
-	    # by grouping p with 1 or more digits and only printing the matchh
+            # by grouping p with 1 or more digits and only printing the match,
+            # with | being used as the command separator.
             # and then format the partition. If the partition was already valid,
             # just resize the existing one. If fsck or resize fails, reformat.
-            partition="$(echo "${disk_label}" | sed -rn 's/.*(p[[:digit:]]+$)/\1/p')"
+            partition="$(echo "${disk_label}" | sed -rn 's|.*(p[[:digit:]]+$)|\1|p')"
             if fstype="$(blkid -o value -s TYPE "${TARGET_DISK}${partition}")"; then
                 echo "Attempting to resize partition ${TARGET_DISK}${partition}"
                 case "${fstype}" in
