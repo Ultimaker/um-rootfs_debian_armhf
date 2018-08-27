@@ -36,6 +36,17 @@ is_dev_setup_mounted=false
 exit_on_failure=false
 
 
+random_int_within()
+{
+    shuf -n 1 -i "${1}"-"${2}"
+}
+
+random_int()
+{
+    shuf -n 1 -i 0-"${1}"
+    random_int_within "0" "${1}"
+}
+
 execute_prepare_disk()
 {
     # sha512sum is executed in the chroot environment to avoid that rootfs dir is prefixed to the file path.
