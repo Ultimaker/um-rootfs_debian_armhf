@@ -57,29 +57,36 @@ partitions_format()
             fi
 
             # Get the partition number from the label. e.g. /dev/loop0p1 -> p1
-	    # by grouping p with 1 or more digits and only printing the matchh
+            # by grouping p with 1 or more digits and only printing the match,
+            # with | being used as the command separator.
             # and then format the partition. If the partition was already valid,
             # just resize the existing one. If fsck or resize fails, reformat.
-            partition="$(echo "${disk_label}" | sed -rn 's/.*(p[[:digit:]]+$)/\1/p')"
+            partition="$(echo "${disk_label}" | sed -rn 's|.*(p[[:digit:]]+$)|\1|p')"
             if fstype="$(blkid -o value -s TYPE "${TARGET_DISK}${partition}")"; then
                 echo "Attempting to resize partition ${TARGET_DISK}${partition}"
                 case "${fstype}" in
                 ext4)
-                    fsck_cmd="fsck.ext4 -f -p"
-                    mkfs_cmd="mkfs.ext4 -L ${table_label}"
+                    fsck_cmd="fsck.ext4 -f -y"
+                    fsck_ret_ok="1"
+                    mkfs_cmd="mkfs.ext4 -F -L ${table_label}"
                     resize_cmd="resize2fs"
                     ;;
                 f2fs)
                     fsck_cmd="fsck.f2fs -f -p -y"
-                    mkfs_cmd="mkfs.f2fs -l ${table_label}"
-                    resize_cmd="resize.f2fs -d 9"
+                    fsck_ret_ok="0"
+                    mkfs_cmd="mkfs.f2fs -f -l ${table_label}"
+                    resize_cmd="resize.f2fs"
                     ;;
                 esac
 
-                if ! eval "${fsck_cmd}" "${TARGET_DISK}${partition}" && \
-                   eval "${resize_cmd}" "${TARGET_DISK}${partition}"; then
-                    echo "Resize failed, formatting instead."
-                    eval "${mkfs_cmd}" "${TARGET_DISK}${partition}"
+                # In some cases of fsck, other values then 0 are acceptable,
+                # as such we need to capture the return value or else set -u
+                # will trigger eval as a failure and abort the script.
+                fsck_status="$(eval "${fsck_cmd}" "${TARGET_DISK}${partition}" 1> /dev/null; echo "${?}")"
+                if [ "${fsck_ret_ok}" -ge "${fsck_status}" ] && \
+                   ! eval "${resize_cmd}" "${TARGET_DISK}${partition}"; then
+                        echo "Resize failed, formatting instead."
+                        eval "${mkfs_cmd}" "${TARGET_DISK}${partition}"
                 fi
             else
                 echo "Formatting ${TARGET_DISK}${partition}"
