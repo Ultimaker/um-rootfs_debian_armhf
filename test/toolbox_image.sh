@@ -49,10 +49,12 @@ random_int()
 
 test_disk_integrity()
 {
-    sfdisk -Vl "${LOOP_STORAGE_DEVICE}"
-    fsck -fn "${LOOP_STORAGE_DEVICE}p1"
-    fsck "${LOOP_STORAGE_DEVICE}p2"
-    fsck "${LOOP_STORAGE_DEVICE}p3"
+    # All return codes not 0 should be considered an error, since prepare_disk
+    # should have fixed any potential filesystem error.
+    sfdisk -Vl "${LOOP_STORAGE_DEVICE}" || return 1
+    fsck.ext4 -fn "${LOOP_STORAGE_DEVICE}p1" || return 1
+    fsck.f2fs "${LOOP_STORAGE_DEVICE}p2" || return 1
+    fsck.f2fs "${LOOP_STORAGE_DEVICE}p3" || return 1
 }
 
 create_dummy_storage_device()
@@ -397,14 +399,41 @@ test_execute_disk_prepare_grow_boot_ok()
 
 test_execute_disk_prepare_sha512_nok()
 {
-    partition_table_file="/tmp/partition_table"
-    sfdisk -d "${rootfs_dir}${STORAGE_DEVICE_IMG}" > "${rootfs_dir}${partition_table_file}"
+    sfdisk -d "${rootfs_dir}${STORAGE_DEVICE_IMG}" > "${rootfs_dir}${PARTITION_TABLE_FILE}"
     # Workaround to avoid having to deal with different workspaces, run sha512sum from within the ${rootfs_dir} workspace.
     chroot "${rootfs_dir}" sha512sum "${PARTITION_TABLE_FILE}" > "${rootfs_dir}${PARTITION_TABLE_FILE}.sha512"
-    echo "corrupted partition table data" >> "${rootfs_dir}${partition_table_file}"
-    chroot "${rootfs_dir}" "${DISK_PREPARE_COMMAND}" -t "${partition_table_file}" "${LOOP_STORAGE_DEVICE}" || return 0
+    echo "corrupted partition table data" >> "${rootfs_dir}${PARTITION_TABLE_FILE}"
+    chroot "${rootfs_dir}" "${DISK_PREPARE_COMMAND}" -t "${PARTITION_TABLE_FILE}" "${LOOP_STORAGE_DEVICE}" || return 0
 }
 
+test_execute_disk_prepare_with_corrupted_ext4_primary_superblock_ok()
+{
+    checksum_size="4"
+    block_size="1024"
+    primary_superblock_start="1"
+    write_start_offset="$((primary_superblock_start * block_size + checksum_size))"
+    dd if=/dev/zero of="${LOOP_STORAGE_DEVICE}p1" bs=1 count=10 seek="${write_start_offset}"
+
+    test_execute_disk_prepare_grow_boot_ok || return 1
+}
+
+test_execute_disk_prepare_with_corrupted_f2fs_primary_superblock_ok()
+{
+    # f2fs superblock are located in the beginning of the filesystem, destroy primary
+    f2fs_superblock_size="$((BYTES_PER_SECTOR * 10))"
+    dd if=/dev/urandom of="${LOOP_STORAGE_DEVICE}p2" bs=1 count="$((f2fs_superblock_size / 2))"
+
+    test_execute_disk_prepare_grow_rootfs_ok || return 1
+}
+
+test_execute_disk_prepare_with_corrupted_f2fs_superblocks_ok()
+{
+    # f2fs superblock are located in the beginning of the filesystem, destroy the primary and secondary
+    f2fs_superblock_size="$((BYTES_PER_SECTOR * 10))"
+    dd if=/dev/urandom of="${LOOP_STORAGE_DEVICE}p3" bs=1 count="$((f2fs_superblock_size + 1024))"
+
+    test_execute_disk_prepare_grow_rootfs_ok || return 1
+}
 
 usage()
 {
@@ -478,7 +507,9 @@ run_test test_execute_disk_prepare_grow_beyond_disk_end_nok
 run_test test_execute_disk_prepare_grow_rootfs_ok
 run_test test_execute_disk_prepare_grow_boot_ok
 run_test test_execute_disk_prepare_sha512_nok
-
+run_test test_execute_disk_prepare_with_corrupted_ext4_primary_superblock_ok
+run_test test_execute_disk_prepare_with_corrupted_f2fs_primary_superblock_ok
+run_test test_execute_disk_prepare_with_corrupted_f2fs_superblocks_ok
 
 if [ "${result}" -ne 0 ]; then
    echo "ERROR: There where failures testing '${ROOTFS_IMG}'."
