@@ -58,7 +58,7 @@ execute_prepare_disk()
     # Remove the identifiers in the header because they will always change.
     sed -i "s/label-id:.*//" "${rootfs_dir}${PARTITION_TABLE_FILE}"
     sed -i "s/label-id:.*//" "${rootfs_dir}${PARTITION_TABLE_FILE}.verify"
-    diff "${rootfs_dir}${PARTITION_TABLE_FILE}" "${rootfs_dir}${PARTITION_TABLE_FILE}.verify" || return 1
+    diff -b "${rootfs_dir}${PARTITION_TABLE_FILE}" "${rootfs_dir}${PARTITION_TABLE_FILE}.verify" || return 1
 }
 
 test_disk_integrity()
@@ -84,9 +84,9 @@ ________________________________________________________________________________
 label: dos
 unit: sectors
 
-boot        : start=${BOOT_START},      size=$((ROOTFS_START - BOOT_START)),     Id=83
-rootfs      : start=${ROOTFS_START},    size=$((USERDATA_START - ROOTFS_START)), Id=83
-userdata    : start=${USERDATA_START},  size=$((STORAGE_DEVICE_SIZE - USERDATA_START)),  Id=83
+boot     : start=${BOOT_START},     size=$((ROOTFS_START - BOOT_START)),            Id=82
+rootfs   : start=${ROOTFS_START},   size=$((USERDATA_START - ROOTFS_START)),        Id=83
+userdata : start=${USERDATA_START}, size=$((STORAGE_DEVICE_SIZE - USERDATA_START)), Id=83
 ________________________________________________________________________________
 
     echo "formatting partitions"
@@ -319,7 +319,7 @@ test_execute_resize_partition_grow_rootfs_ok()
 
     # In every line in the partition table look for a string "p3<don't care>type" and replace it with
     # with new the new disk partition parameters defined above.
-    sed -i "s/p3.*type/p3 : start=     ${new_userdata_start}, size=     ${new_userdata_size}, type/" \
+    sed -i "s/p3.*type/p3 : start= ${new_userdata_start}, size= ${new_userdata_size}, type/" \
         "${rootfs_dir}${PARTITION_TABLE_FILE}"
 
     execute_prepare_disk || return 1
