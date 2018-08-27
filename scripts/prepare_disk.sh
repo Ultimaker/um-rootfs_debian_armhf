@@ -73,7 +73,7 @@ partitions_format()
                 f2fs)
                     fsck_cmd="fsck.f2fs -f -p -y"
                     mkfs_cmd="mkfs.f2fs -l ${table_label}"
-                    resize_cmd="resize.f2fs -d 9"
+                    resize_cmd="resize.f2fs"
                     ;;
                 esac
 
