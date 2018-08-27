@@ -18,6 +18,7 @@ DISK_PREPARE_COMMAND="/sbin/prepare_disk.sh"
 # are calculated by multiplying the sector number with the sector size.
 STORAGE_DEVICE_IMG="/tmp/storage_device.img"
 BYTES_PER_SECTOR="512"
+MIN_PARTITION_SIZE="78124"    # 40 MiB (enough for f2fs and ext4)
 STORAGE_DEVICE_SIZE="7553024" # sectors, about 3.6 GiB
 BOOT_START="2048"             # offset 1 MiB
 ROOTFS_START="67584"          # offset 33 MiB
@@ -313,14 +314,16 @@ test_system_update_entrypoint()
 
 test_execute_resize_partition_grow_rootfs_ok()
 {
-    userdata_size="$((STORAGE_DEVICE_SIZE - USERDATA_START))"
-    new_userdata_size="$((userdata_size / 2))"
-    new_userdata_start="$((USERDATA_START + new_userdata_size))"
+    max_userdata_size="$((STORAGE_DEVICE_SIZE - USERDATA_START))"
+    new_userdata_size="$(random_int_within "${MIN_PARTITION_SIZE}" "${max_userdata_size}")"
+
+    new_userdata_start="$((STORAGE_DEVICE_SIZE - new_userdata_size))"
+    new_rootfs_size="$((new_userdata_start - ROOTFS_START))"
 
     # In every line in the partition table look for a string "p3<don't care>type" and replace it with
     # with new the new disk partition parameters defined above.
-    sed -i "s/p3.*type/p3 : start= ${new_userdata_start}, size= ${new_userdata_size}, type/" \
-        "${rootfs_dir}${PARTITION_TABLE_FILE}"
+    sed -i "s|${LOOP_STORAGE_DEVICE}p2.*type|${LOOP_STORAGE_DEVICE}p2 : start= ${ROOTFS_START}, size= ${new_rootfs_size}, type|" "${rootfs_dir}${PARTITION_TABLE_FILE}"
+    sed -i "s|${LOOP_STORAGE_DEVICE}p3.*type|${LOOP_STORAGE_DEVICE}p3 : start= ${new_userdata_start}, size= ${new_userdata_size}, type|" "${rootfs_dir}${PARTITION_TABLE_FILE}"
 
     execute_prepare_disk || return 1
     test_disk_integrity || return 1
