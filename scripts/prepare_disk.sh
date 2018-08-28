@@ -190,6 +190,10 @@ if [ ! -r "${PARTITION_TABLE_FILE}" ]; then
     exit 1
 fi
 
+echo "Availabe loop device partitions"
+
+ls -la "${TARGET_DISK}"*
+
 partition_resize
 partition_sync
 partitions_format

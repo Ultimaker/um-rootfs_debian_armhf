@@ -84,11 +84,13 @@ ________________________________________________________________________________
     mkfs.f2fs -q "${LOOP_STORAGE_DEVICE}p3"
 
     if ! test_disk_integrity; then
-        echo "Something went wrong creating dummy storage device: '${LOOP_STORAGE_DEVICE}'."
-        return 1
+        echo "Unrecoverable error creating dummy storage device: '${LOOP_STORAGE_DEVICE}'."
+        exit 1
     fi
 
-    echo "Successfully created dummy storage device: '${LOOP_STORAGE_DEVICE}'."
+    echo "Successfully created dummy storage device: '${LOOP_STORAGE_DEVICE}',"
+    echo "with the following partitions:"
+    ls -la "${LOOP_STORAGE_DEVICE}"*
     return 0
 }
 
@@ -436,11 +438,15 @@ test_execute_disk_prepare_with_corrupted_f2fs_primary_superblock_ok()
 
 test_execute_disk_prepare_with_corrupted_f2fs_superblocks_ok()
 {
+    set -x
     # f2fs superblock are located in the beginning of the filesystem, destroy the primary and secondary
     f2fs_superblock_size="$((BYTES_PER_SECTOR * 10))"
     dd if=/dev/urandom of="${LOOP_STORAGE_DEVICE}p3" bs=1 count="$((f2fs_superblock_size + 1024))"
 
-    test_execute_disk_prepare_grow_rootfs_ok || return 1
+    result=0
+    test_execute_disk_prepare_grow_rootfs_ok || result="${?}"
+    set -x
+    return "${result}"
 }
 
 usage()
