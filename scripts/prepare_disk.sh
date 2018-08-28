@@ -1,10 +1,10 @@
 #!/bin/sh
 #
-# SPDX-License-Identifier: AGPL-3.0+
-#
 # Copyright (C) 2018 Ultimaker B.V.
 # Copyright (C) 2018 Olliver Schinagl <oliver@schinagl.nl>
+# Copyright (C) 2018 Raymond Siudak <raysiudak@gmail.com>
 #
+# SPDX-License-Identifier: AGPL-3.0+
 
 set -eu
 
@@ -189,6 +189,10 @@ if [ ! -r "${PARTITION_TABLE_FILE}" ]; then
     echo "Unable to read partition table file '${PARTITION_TABLE_FILE}', cannot continue."
     exit 1
 fi
+
+echo "Availabe loop device partitions"
+
+ls -la "${TARGET_DISK}"*
 
 partition_resize
 partition_sync

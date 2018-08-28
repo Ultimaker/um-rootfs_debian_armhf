@@ -1,4 +1,11 @@
-FROM registry.hub.docker.com/library/alpine:latest
+#
+# Copyright (C) 2018 Ultimaker B.V.
+# Copyright (C) 2018 Raymond Siudak <raysiudak@gmail.com>
+# Copyright (C) 2018 Olliver Schinagl <oliver@schinagl.nl>
+#
+# SPDX-License-Identifier: AGPL-3.0+
+
+FROM registry.hub.docker.com/library/alpine:edge
 
 LABEL Maintainer="software-embedded-platform@ultimaker.com" \
       Comment="Ultimaker update-tools filesystem"

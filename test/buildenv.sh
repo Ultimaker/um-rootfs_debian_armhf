@@ -1,4 +1,10 @@
 #!/bin/sh
+#
+# Copyright (C) 2018 Ultimaker B.V.
+# Copyright (C) 2018 Raymond Siudak <raysiudak@gmail.com>
+# Copyright (C) 2018 Olliver Schinagl <oliver@schinagl.nl>
+#
+# SPDX-License-Identifier: AGPL-3.0+
 
 set -eu
 
@@ -105,6 +111,17 @@ check_command_installation()
     for pkg in ${COMMANDS}; do
         PATH="${PATH}:/sbin:/usr/sbin:/usr/local/sbin" command -V "${pkg}" || result=1
     done
+}
+
+check_device_support()
+{
+    printf "urandom device file: "
+    if [ ! -c "/dev/urandom" ]; then
+        result=1
+        echo "doesn't exists"
+        return
+    fi
+    echo "exists"
 }
 
 echo "Checking build environment preconditions:"
