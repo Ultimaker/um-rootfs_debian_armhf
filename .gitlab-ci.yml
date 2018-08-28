@@ -29,36 +29,36 @@ stages:
   image: registry.hub.docker.com/koalaman/shellcheck-alpine:stable
   stage: lint
 
-lint_build_environment:
+.lint_build_environment:
   <<: *shell_linting_common
   script:
     - shellcheck -C -f tty -s sh test/buildenv.sh
 
-lint_local_build_script:
+.lint_local_build_script:
   <<: *shell_linting_common
   script:
     - shellcheck -C -f tty -s sh build_for_ultimaker.sh
 
-lint_package_build_script:
+.lint_package_build_script:
   <<: *shell_linting_common
   script:
     - shellcheck -C -f tty -s sh build.sh
 
-lint_artifact_test_script:
+.lint_artifact_test_script:
   <<: *shell_linting_common
   script:
     - shellcheck -C -f tty -s sh test/toolbox_image.sh
-lint_local_build_script:
+.lint_local_build_script:
   <<: *shell_linting_common
   script:
     - shellcheck -C -f tty -s sh build_for_ultimaker.sh
 
-lint_package_build_script:
+.lint_package_build_script:
   <<: *shell_linting_common
   script:
     - shellcheck -C -f tty -s sh build.sh
 
-lint_artifact_test_script:
+.lint_artifact_test_script:
   <<: *shell_linting_common
   script:
     - shellcheck -C -f tty -s sh test/toolbox_image.sh

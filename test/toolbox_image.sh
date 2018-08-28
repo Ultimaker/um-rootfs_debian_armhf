@@ -94,6 +94,24 @@ ________________________________________________________________________________
     return 0
 }
 
+partition_sync()
+{
+    i=10
+    while [ "${i}" -gt 0 ]; do
+        if partprobe "${LOOP_STORAGE_DEVICE}"; then
+            return
+        fi
+
+        echo "Partprobe failed, retrying."
+        sleep 1
+
+        i=$((i - 1))
+    done
+
+    echo "Partprobe failed, giving up."
+    return 1
+}
+
 setup()
 {
     if [ ! -x "${ARM_EMU_BIN}" ]; then
@@ -133,6 +151,8 @@ setup()
     create_dummy_storage_device
 
     sfdisk -d "${LOOP_STORAGE_DEVICE}" > "${rootfs_dir}${PARTITION_TABLE_FILE}"
+
+    partition_sync
 }
 
 teardown()
@@ -323,8 +343,7 @@ test_execute_disk_prepare_grow_boot_overlapping_rootfs_nok()
 
     # In every line in the partition table look for a string "p1<don't care>type" and replace it with
     # with new the new disk partition parameters defined above.
-    sed -i "s|${LOOP_STORAGE_DEVICE}p2.*type|${LOOP_STORAGE_DEVICE}p1 : start= ${BOOT_START}, size= \
-        ${new_boot_size}, type|" "${rootfs_dir}${PARTITION_TABLE_FILE}"
+    sed -i "s|${LOOP_STORAGE_DEVICE}p2.*type|${LOOP_STORAGE_DEVICE}p1 : start= ${BOOT_START}, size= ${new_boot_size}, type|" "${rootfs_dir}${PARTITION_TABLE_FILE}"
 
     execute_prepare_disk || return 0
 }
@@ -338,8 +357,7 @@ test_execute_disk_prepare_grow_rootfs_overlapping_userdata_nok()
 
     # In every line in the partition table look for a string "p2<don't care>type" and replace it with
     # with new the new disk partition parameters defined above.
-    sed -i "s|${LOOP_STORAGE_DEVICE}p2.*type|${LOOP_STORAGE_DEVICE}p2 : start= ${ROOTFS_START}, size= \
-        ${new_rootfs_size}, type|" "${rootfs_dir}${PARTITION_TABLE_FILE}"
+    sed -i "s|${LOOP_STORAGE_DEVICE}p2.*type|${LOOP_STORAGE_DEVICE}p2 : start= ${ROOTFS_START}, size= ${new_rootfs_size}, type|" "${rootfs_dir}${PARTITION_TABLE_FILE}"
 
     execute_prepare_disk || return 0
 }
@@ -351,8 +369,7 @@ test_execute_disk_prepare_grow_boot_invalid_start_nok()
 
     # In every line in the partition table look for a string "p1<don't care>type" and replace it with
     # with new the new disk partition parameters defined above.
-    sed -i "s|${LOOP_STORAGE_DEVICE}p1.*type|${LOOP_STORAGE_DEVICE}p1 : start= ${new_boot_start}, size= \
-        ${new_boot_size}, type|" "${rootfs_dir}${PARTITION_TABLE_FILE}"
+    sed -i "s|${LOOP_STORAGE_DEVICE}p1.*type|${LOOP_STORAGE_DEVICE}p1 : start= ${new_boot_start}, size= ${new_boot_size}, type|" "${rootfs_dir}${PARTITION_TABLE_FILE}"
 
     execute_prepare_disk || return 0
 }
@@ -363,8 +380,7 @@ test_execute_disk_prepare_grow_beyond_disk_end_nok()
 
     # In every line in the partition table look for a string "p3<don't care>type" and replace it with
     # with new the new disk partition parameters defined above.
-    sed -i "s|${LOOP_STORAGE_DEVICE}p3.*type|${LOOP_STORAGE_DEVICE}p3 : start= ${USERDATA_START}, size= \
-        ${new_userdata_size}, type|" "${rootfs_dir}${PARTITION_TABLE_FILE}"
+    sed -i "s|${LOOP_STORAGE_DEVICE}p3.*type|${LOOP_STORAGE_DEVICE}p3 : start= ${USERDATA_START}, size= ${new_userdata_size}, type|" "${rootfs_dir}${PARTITION_TABLE_FILE}"
 
     execute_prepare_disk || return 0
 }
@@ -379,10 +395,8 @@ test_execute_disk_prepare_grow_rootfs_ok()
 
     # In every line in the partition table look for a string "p2<don't care>type" and replace it with
     # with new the new disk partition parameters defined above.
-    sed -i "s|${LOOP_STORAGE_DEVICE}p2.*type|${LOOP_STORAGE_DEVICE}p2 : start= ${ROOTFS_START}, \
-        size= ${new_rootfs_size}, type|" "${rootfs_dir}${PARTITION_TABLE_FILE}"
-    sed -i "s|${LOOP_STORAGE_DEVICE}p3.*type|${LOOP_STORAGE_DEVICE}p3 : start= ${new_userdata_start}, \
-        size= ${new_userdata_size}, type|" "${rootfs_dir}${PARTITION_TABLE_FILE}"
+    sed -i "s|${LOOP_STORAGE_DEVICE}p2.*type|${LOOP_STORAGE_DEVICE}p2 : start= ${ROOTFS_START}, size= ${new_rootfs_size}, type|" "${rootfs_dir}${PARTITION_TABLE_FILE}"
+    sed -i "s|${LOOP_STORAGE_DEVICE}p3.*type|${LOOP_STORAGE_DEVICE}p3 : start= ${new_userdata_start}, size= ${new_userdata_size}, type|" "${rootfs_dir}${PARTITION_TABLE_FILE}"
 
     execute_prepare_disk || return 1
     test_disk_integrity || return 1
@@ -398,10 +412,8 @@ test_execute_disk_prepare_grow_boot_ok()
 
     # In every line in the partition table look for a string "p1<don't care>type" and replace it with
     # with new the new disk partition parameters defined above.
-    sed -i "s|${LOOP_STORAGE_DEVICE}p1.*type|${LOOP_STORAGE_DEVICE}p1 : start= ${BOOT_START}, \
-        size= ${new_boot_size}, type|" "${rootfs_dir}${PARTITION_TABLE_FILE}"
-    sed -i "s|${LOOP_STORAGE_DEVICE}p2.*type|${LOOP_STORAGE_DEVICE}p2 : start= ${new_rootfs_start}, \
-        size= ${new_rootfs_size}, type|" "${rootfs_dir}${PARTITION_TABLE_FILE}"
+    sed -i "s|${LOOP_STORAGE_DEVICE}p1.*type|${LOOP_STORAGE_DEVICE}p1 : start= ${BOOT_START}, size= ${new_boot_size}, type|" "${rootfs_dir}${PARTITION_TABLE_FILE}"
+    sed -i "s|${LOOP_STORAGE_DEVICE}p2.*type|${LOOP_STORAGE_DEVICE}p2 : start= ${new_rootfs_start}, size= ${new_rootfs_size}, type|" "${rootfs_dir}${PARTITION_TABLE_FILE}"
 
     execute_prepare_disk || return 1
     test_disk_integrity || return 1
@@ -438,15 +450,11 @@ test_execute_disk_prepare_with_corrupted_f2fs_primary_superblock_ok()
 
 test_execute_disk_prepare_with_corrupted_f2fs_superblocks_ok()
 {
-    set -x
     # f2fs superblock are located in the beginning of the filesystem, destroy the primary and secondary
     f2fs_superblock_size="$((BYTES_PER_SECTOR * 10))"
     dd if=/dev/urandom of="${LOOP_STORAGE_DEVICE}p3" bs=1 count="$((f2fs_superblock_size + 1024))"
 
-    result=0
-    test_execute_disk_prepare_grow_rootfs_ok || result="${?}"
-    set -x
-    return "${result}"
+    test_execute_disk_prepare_grow_rootfs_ok || return 1
 }
 
 usage()
