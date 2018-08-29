@@ -69,7 +69,7 @@ env_check()
     if command -V docker; then
         run_in_docker "${DOCKER_WORK_DIR}" "./test/buildenv.sh" ""
     else
-        ./tests/buildenv.sh
+        "./test/buildenv.sh"
     fi
 }
 
@@ -87,7 +87,7 @@ run_tests()
     if command -V docker; then
         run_in_docker "${DOCKER_WORK_DIR}" "./test/toolbox_image.sh" "${DOCKER_BUILD_DIR}/${TOOLBOX_IMAGE}"
     else
-        ./tests/toolbox_image.sh "${BUILD_DIR}/${TOOLBOX_IMAGE}"
+        "./test/toolbox_image.sh" "${BUILD_DIR}/${TOOLBOX_IMAGE}"
     fi
 }
 
