@@ -40,6 +40,7 @@ setup_emulation_support()
 
     if [ ! -x "${ARM_EMU_BIN}" ]; then
         echo "Unusable ARMv7 interpreter '${ARM_EMU_BIN}'."
+        echo "Most likely fixed with 'sudo apt-get install binfmt-support qemu-user-static'"
         exit 1
     fi
 
@@ -68,7 +69,7 @@ env_check()
     if command -V docker; then
         run_in_docker "${DOCKER_WORK_DIR}" "./test/buildenv.sh" ""
     else
-        ./tests/buildenv.sh
+        ./test/buildenv.sh
     fi
 }
 
@@ -86,7 +87,7 @@ run_tests()
     if command -V docker; then
         run_in_docker "${DOCKER_WORK_DIR}" "./test/toolbox_image.sh" "${DOCKER_BUILD_DIR}/${TOOLBOX_IMAGE}"
     else
-        ./tests/toolbox_image.sh "${BUILD_DIR}/${TOOLBOX_IMAGE}"
+        ./test/toolbox_image.sh "${BUILD_DIR}/${TOOLBOX_IMAGE}"
     fi
 }
 
