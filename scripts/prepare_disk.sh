@@ -22,6 +22,16 @@ usage()
     echo "NOTE: This script is destructive and will destroy your data."
 }
 
+is_integer()
+{
+    test "${1}" -eq "${1}" 2> /dev/null
+}
+
+is_comment()
+{
+    test -z "${1%%#*}"
+}
+
 partition_sync()
 {
     i=10
@@ -110,16 +120,6 @@ partitions_format()
 
 partition_resize()
 {
-    is_integer()
-    {
-        test "${1}" -eq "${1}" 2> /dev/null
-    }
-
-    is_comment()
-    {
-        test -z "${1%%#*}"
-    }
-
     if ! sha512sum -csw "${PARTITION_TABLE_FILE}.sha512"; then
         echo "Error processing partition table: crc error."
         exit 1
