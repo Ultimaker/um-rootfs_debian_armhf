@@ -35,6 +35,21 @@ result=0
 is_dev_setup_mounted=false
 exit_on_failure=false
 
+
+execute_prepare_disk()
+{
+    # sha512sum is executed in the chroot environment to avoid that rootfs dir is prefixed to the file path.
+    chroot "${rootfs_dir}" sha512sum "${PARTITION_TABLE_FILE}" > "${rootfs_dir}${PARTITION_TABLE_FILE}.sha512" || return 1
+    chroot "${rootfs_dir}" "${DISK_PREPARE_COMMAND}" -t "${PARTITION_TABLE_FILE}" "${LOOP_STORAGE_DEVICE}" || return 1
+
+    sfdisk -d "${LOOP_STORAGE_DEVICE}" > "${rootfs_dir}${PARTITION_TABLE_FILE}.verify"
+
+    # Remove the identifiers in the header because they will always change.
+    sed -i "s/label-id:.*//" "${rootfs_dir}${PARTITION_TABLE_FILE}"
+    sed -i "s/label-id:.*//" "${rootfs_dir}${PARTITION_TABLE_FILE}.verify"
+    diff "${rootfs_dir}${PARTITION_TABLE_FILE}" "${rootfs_dir}${PARTITION_TABLE_FILE}.verify" || return 1
+}
+
 test_disk_integrity()
 {
     # All return codes not 0 should be considered an error, since prepare_disk
@@ -54,14 +69,14 @@ create_dummy_storage_device()
     echo "writing partition table:"
 
     sfdisk "${rootfs_dir}${STORAGE_DEVICE_IMG}" << \
-______________________________________________________________________________________
+________________________________________________________________________________
 label: dos
 unit: sectors
 
 boot        : start=${BOOT_START},      size=$((ROOTFS_START - BOOT_START)),     Id=83
 rootfs      : start=${ROOTFS_START},    size=$((USERDATA_START - ROOTFS_START)), Id=83
 userdata    : start=${USERDATA_START},  size=$((STORAGE_DEVICE_SIZE - USERDATA_START)),  Id=83
-______________________________________________________________________________________
+________________________________________________________________________________
 
     echo "formatting partitions"
 
@@ -209,9 +224,11 @@ run_test()
 {
     setup
 
-    echo "______________________________________________________________________________________"
+    echo "________________________________________________________________________________"
     echo
     echo "Run: ${1}"
+    echo
+    echo
     if "${1}"; then
         echo "Result - OK"
     else
@@ -221,7 +238,7 @@ run_test()
             exit "${result}"
         fi
     fi
-    echo "______________________________________________________________________________________"
+    echo "________________________________________________________________________________"
 
     teardown
 }
@@ -294,17 +311,7 @@ test_execute_resize_partition_grow_rootfs_ok()
     sed -i "s/p3.*type/p3 : start=     ${new_userdata_start}, size=     ${new_userdata_size}, type/" \
         "${rootfs_dir}${PARTITION_TABLE_FILE}"
 
-    # sha512sum is executed in the chroot environment to avoid that rootfs dir is prefixed to the file path.
-    chroot "${rootfs_dir}" sha512sum "${PARTITION_TABLE_FILE}" > "${rootfs_dir}${PARTITION_TABLE_FILE}.sha512" || return 1
-    chroot "${rootfs_dir}" "${DISK_PREPARE_COMMAND}" -t "${PARTITION_TABLE_FILE}" "${LOOP_STORAGE_DEVICE}" || return 1
-
-    sfdisk -d "${LOOP_STORAGE_DEVICE}" > "${rootfs_dir}${PARTITION_TABLE_FILE}.verify"
-
-    # Remove the identifiers in the header because they will always change.
-    sed -i "s/label-id:.*//" "${rootfs_dir}${PARTITION_TABLE_FILE}"
-    sed -i "s/label-id:.*//" "${rootfs_dir}${PARTITION_TABLE_FILE}.verify"
-    diff "${rootfs_dir}${PARTITION_TABLE_FILE}" "${rootfs_dir}${PARTITION_TABLE_FILE}.verify" || return 1
-
+    execute_prepare_disk || return 1
     test_disk_integrity || return 1
 }
 
@@ -312,7 +319,7 @@ usage()
 {
 cat <<-EOT
 	Usage:   "${0}" [OPTIONS] <file.img>
-	    -e   Stop consequtive tests on failure without cleanup
+	    -e   Stop consecutive tests on failure without cleanup
 	    -h   Print usage
 	NOTE: This script requires root permissions to run.
 EOT
