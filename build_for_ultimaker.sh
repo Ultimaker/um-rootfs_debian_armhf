@@ -40,6 +40,7 @@ setup_emulation_support()
 
     if [ ! -x "${ARM_EMU_BIN}" ]; then
         echo "Unusable ARMv7 interpreter '${ARM_EMU_BIN}'."
+        echo "Install an arm-emulator, such as qemu-arm-static for example."
         exit 1
     fi
 
