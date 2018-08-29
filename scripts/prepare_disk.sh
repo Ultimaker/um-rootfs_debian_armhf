@@ -121,6 +121,9 @@ partition_resize()
 
     boot_partition_available=false
 
+    # sfdisk returns size in blocks, * (1024 / 512) converts to sectors
+    target_disk_end="$(($(sfdisk --quiet --show-size "${TARGET_DISK}" 2> /dev/null) * 2))"
+
     # Temporally expand the Input Field Separator with ':=,' and treat them
     # as whitespaces, in other words, ignore them.
     while IFS="${IFS}:=," read -r label _ start _ size _; do
@@ -134,8 +137,6 @@ partition_resize()
         fi
 
         partition_end="$((start + size))"
-        # sfdisk returns size in blocks, * (1024 / 512) converts to sectors
-        target_disk_end="$(($(sfdisk --quiet --show-size "${TARGET_DISK}" 2> /dev/null) * 2))"
         if [ "${partition_end}" -gt "${target_disk_end}" ]; then
             echo "Partition '${label}' is beyond the size of the disk (${partition_end} > ${target_disk_end}), cannot continue."
             exit 1
