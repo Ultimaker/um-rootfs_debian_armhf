@@ -44,7 +44,7 @@ partitions_format()
 {
     # Parse the output of sfdisk and temporally expand the Input Field Separator
     # with ':=,' and treat them as whitespaces, in other words, ignore them.
-    sfdisk --quiet -d "${TARGET_DISK}" | \
+    sfdisk --quiet --dump "${TARGET_DISK}" | \
     while IFS="${IFS}:=," read -r disk_label _ disk_start _ disk_size _; do
         while IFS="${IFS}:=," read -r table_label _ table_start _ table_size _; do
             if [ -z "${disk_start}" ] || [ -z "${table_start}" ] || \
