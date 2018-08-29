@@ -52,6 +52,11 @@ partitions_format()
                 continue
             fi
 
+            if [ ! -b "${disk_label}" ]; then
+                echo "ERROR: '${disk_label}' is not a block device, cannot continue"
+                exit 1
+            fi
+
             if grep -q "${disk_label}" /proc/mounts; then
                 umount "${disk_label}"
             fi
