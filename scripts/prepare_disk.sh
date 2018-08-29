@@ -37,6 +37,7 @@ partition_sync()
     done
 
     echo "Partprobe failed, giving up."
+
     return 1
 }
 
@@ -193,6 +194,11 @@ TARGET_DISK="${*}"
 
 if [ ! -r "${PARTITION_TABLE_FILE}" ]; then
     echo "Unable to read partition table file '${PARTITION_TABLE_FILE}', cannot continue."
+    exit 1
+fi
+
+if [ ! -b "${TARGET_DISK}" ]; then
+    echo "Error, block device '${TARGET_DISK}' does not exist."
     exit 1
 fi
 
