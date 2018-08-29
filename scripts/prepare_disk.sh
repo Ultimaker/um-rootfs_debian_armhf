@@ -96,9 +96,9 @@ partitions_format()
             else
                 echo "Formatting ${TARGET_DISK}${partition}"
                 if [ "${disk_start}" -eq "${BOOT_PARTITION_START}" ]; then
-                    mkfs_cmd="mkfs.ext4 -L ${table_label}"
+                    mkfs_cmd="mkfs.ext4 -F -L ${table_label}"
                 else
-                    mkfs_cmd="mkfs.f2fs -l ${table_label}"
+                    mkfs_cmd="mkfs.f2fs -f -l ${table_label}"
                 fi
 
                 eval "${mkfs_cmd}" "${TARGET_DISK}${partition}"
