@@ -13,9 +13,12 @@ LABEL Maintainer="software-embedded-platform@ultimaker.com" \
 RUN apk add --no-cache \
         e2fsprogs \
         f2fs-tools \
+        dpkg \
+        gettext \
         sfdisk \
         squashfs-tools \
         util-linux \
+        tar \
         xz \
     && \
     rm -f /var/cache/apk/*

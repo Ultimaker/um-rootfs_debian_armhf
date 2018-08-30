@@ -19,6 +19,12 @@ ROOTFS_DIR="${BUILD_DIR}/rootfs"
 
 COMMANDS="blkid busybox e2fsprogs-extra f2fs-tools rsync sfdisk"
 
+# Debian package information
+PREFIX="/usr/share/um-update-toolbox"
+RELEASE_VERSION="${RELEASE_VERSION:-9999.99.99}"
+PACKAGE_NAME="${PACKAGE_NAME:-um-update-toolbox-armhf}"
+DEB_PACKAGE="${PACKAGE_NAME}-${RELEASE_VERSION}.deb"
+
 cleanup()
 {
     mounts="$(grep "${ROOTFS_DIR}" /proc/mounts || true)"
@@ -113,6 +119,19 @@ compress_rootfs()
     echo "Created ${BUILD_DIR}/${TOOLBOX_IMAGE}."
 }
 
+create_debian_package()
+{
+    deb_dir="${BUILD_DIR}/debian_deb_build"
+
+    mkdir -p "${deb_dir}/DEBIAN"
+    RELEASE_VERSION="${RELEASE_VERSION}" PACKAGE_NAME="${PACKAGE_NAME}" envsubst "\${RELEASE_VERSION} \${PACKAGE_NAME}" < "${CUR_DIR}/debian/control.in" > "${deb_dir}/DEBIAN/control"
+
+    mkdir -p "${deb_dir}${INSTALL_DIR}"
+    cp "${BUILD_DIR}/${TOOLBOX_IMAGE}" "${deb_dir}${INSTALL_DIR}/"
+
+    dpkg-deb --build "${deb_dir}" "${BUILD_DIR}/${DEB_PACKAGE}"
+}
+
 usage()
 {
 cat <<-EOT
@@ -160,5 +179,6 @@ bootstrap_rootfs
 add_update_scripts
 bootstrap_unprepare
 compress_rootfs
+create_debian_package
 
 exit 0
