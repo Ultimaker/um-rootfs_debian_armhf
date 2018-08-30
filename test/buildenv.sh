@@ -1,4 +1,10 @@
 #!/bin/sh
+#
+# Copyright (C) 2018 Ultimaker B.V.
+# Copyright (C) 2018 Raymond Siudak <raysiudak@gmail.com>
+# Copyright (C) 2018 Olliver Schinagl <oliver@schinagl.nl>
+#
+# SPDX-License-Identifier: AGPL-3.0+
 
 set -eu
 
@@ -6,7 +12,7 @@ ARM_EMU_BIN="${ARM_EMU_BIN:-}"
 BINFMT_MISC="${BINFMT_MISC:-/proc/sys/fs/binfmt_misc/}"
 
 FILESYSTEMS="ext4 f2fs overlay squashfs tmpfs"
-COMMANDS="apk blkid fsck.ext4 fsck.f2fs losetup mkfs.ext4 mkfs.f2fs mksquashfs sed sfdisk xz"
+COMMANDS="apk blkid fsck.ext4 fsck.f2fs losetup mkfs.ext4 mkfs.f2fs mksquashfs sed sfdisk shuf xz"
 
 ARMv7_MAGIC="7f454c4601010100000000000000000002002800"
 

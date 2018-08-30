@@ -29,6 +29,11 @@ stages:
   image: registry.hub.docker.com/koalaman/shellcheck-alpine:stable
   stage: lint
 
+lint_artifact_test_script:
+  <<: *shell_linting_common
+  script:
+    - shellcheck -C -f tty -s sh test/toolbox_image.sh
+
 lint_build_environment:
   <<: *shell_linting_common
   script:
@@ -43,25 +48,6 @@ lint_package_build_script:
   <<: *shell_linting_common
   script:
     - shellcheck -C -f tty -s sh build.sh
-
-lint_artifact_test_script:
-  <<: *shell_linting_common
-  script:
-    - shellcheck -C -f tty -s sh test/toolbox_image.sh
-lint_local_build_script:
-  <<: *shell_linting_common
-  script:
-    - shellcheck -C -f tty -s sh build_for_ultimaker.sh
-
-lint_package_build_script:
-  <<: *shell_linting_common
-  script:
-    - shellcheck -C -f tty -s sh build.sh
-
-lint_artifact_test_script:
-  <<: *shell_linting_common
-  script:
-    - shellcheck -C -f tty -s sh test/toolbox_image.sh
 
 # Build environment
 # The 'prepare' and the 'push' stages are executed conditionally. They both include

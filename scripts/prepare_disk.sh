@@ -1,10 +1,10 @@
 #!/bin/sh
 #
-# SPDX-License-Identifier: AGPL-3.0+
-#
 # Copyright (C) 2018 Ultimaker B.V.
 # Copyright (C) 2018 Olliver Schinagl <oliver@schinagl.nl>
+# Copyright (C) 2018 Raymond Siudak <raysiudak@gmail.com>
 #
+# SPDX-License-Identifier: AGPL-3.0+
 
 set -eu
 
@@ -44,12 +44,17 @@ partitions_format()
 {
     # Parse the output of sfdisk and temporally expand the Input Field Separator
     # with ':=,' and treat them as whitespaces, in other words, ignore them.
-    sfdisk --quiet -d "${TARGET_DISK}" | \
+    sfdisk --quiet --dump "${TARGET_DISK}" | \
     while IFS="${IFS}:=," read -r disk_label _ disk_start _ disk_size _; do
         while IFS="${IFS}:=," read -r table_label _ table_start _ table_size _; do
             if [ -z "${disk_start}" ] || [ -z "${table_start}" ] || \
                [ "${disk_start}" != "${table_start}" ]; then
                 continue
+            fi
+
+            if [ ! -b "${disk_label}" ]; then
+                echo "ERROR: '${disk_label}' is not a block device, cannot continue"
+                exit 1
             fi
 
             if grep -q "${disk_label}" /proc/mounts; then
@@ -91,9 +96,9 @@ partitions_format()
             else
                 echo "Formatting ${TARGET_DISK}${partition}"
                 if [ "${disk_start}" -eq "${BOOT_PARTITION_START}" ]; then
-                    mkfs_cmd="mkfs.ext4 -L ${table_label}"
+                    mkfs_cmd="mkfs.ext4 -F -L ${table_label}"
                 else
-                    mkfs_cmd="mkfs.f2fs -l ${table_label}"
+                    mkfs_cmd="mkfs.f2fs -f -l ${table_label}"
                 fi
 
                 eval "${mkfs_cmd}" "${TARGET_DISK}${partition}"
@@ -121,6 +126,9 @@ partition_resize()
 
     boot_partition_available=false
 
+    # sfdisk returns size in blocks, * (1024 / 512) converts to sectors
+    target_disk_end="$(($(sfdisk --quiet --show-size "${TARGET_DISK}" 2> /dev/null) * 2))"
+
     # Temporally expand the Input Field Separator with ':=,' and treat them
     # as whitespaces, in other words, ignore them.
     while IFS="${IFS}:=," read -r label _ start _ size _; do
@@ -134,8 +142,6 @@ partition_resize()
         fi
 
         partition_end="$((start + size))"
-        # sfdisk returns size in blocks, * (1024 / 512) converts to sectors
-        target_disk_end="$(($(sfdisk --quiet --show-size "${TARGET_DISK}" 2> /dev/null) * 2))"
         if [ "${partition_end}" -gt "${target_disk_end}" ]; then
             echo "Partition '${label}' is beyond the size of the disk (${partition_end} > ${target_disk_end}), cannot continue."
             exit 1
