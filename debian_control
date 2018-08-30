@@ -1,0 +1,6 @@
+Package: ${PACKAGE_NAME}
+Version: ${RELEASE_VERSION}
+Architecture: armhf
+Maintainer: Ultimaker <info@ultimaker.com>
+Priority: optional
+Description: Toolbox used during the system update.

@@ -20,11 +20,11 @@ ROOTFS_DIR="${BUILD_DIR}/rootfs"
 PACKAGES="blkid busybox e2fsprogs-extra f2fs-tools rsync sfdisk"
 
 # Debian package information
-PREFIX="${PREFIX:-/usr}"
 PACKAGE_NAME="${PACKAGE_NAME:-um-update-toolbox}"
-INSTALL_DIR="${INSTALL_DIR:-${PREFIX}/share/${PACKAGE_NAME}}"
+INSTALL_DIR="${INSTALL_DIR:-/usr/share/${PACKAGE_NAME}}"
 RELEASE_VERSION="${RELEASE_VERSION:-9999.99.99}"
 DEB_PACKAGE="${PACKAGE_NAME}_${ARCH}-${RELEASE_VERSION}.deb"
+
 
 cleanup()
 {
