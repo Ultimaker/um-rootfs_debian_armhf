@@ -22,6 +22,50 @@ usage()
     echo "NOTE: This script is destructive and will destroy your data."
 }
 
+is_integer()
+{
+    test "${1}" -eq "${1}" 2> /dev/null
+}
+
+is_comment()
+{
+    test -z "${1%%#*}"
+}
+
+# Returns 0 when resize is needed and 1 if not needed.
+is_resize_needed()
+{
+    current_partition_table_file="$(mktemp)"
+    sfdisk -d "${TARGET_DISK}" > "${current_partition_table_file}"
+
+    while IFS="${IFS}:=," read -r table_label _ table_start _ table_size _; do
+        if is_comment "${table_label}" || ! is_integer "${table_start}" || \
+            ! is_integer "${table_size}"; then
+            continue
+        fi
+
+        while IFS="${IFS}:=," read -r disk_label _ disk_start _ disk_size _; do
+            if is_comment "${disk_label}" || ! is_integer "${disk_start}" || \
+                ! is_integer "${disk_size}"; then
+                continue
+            fi
+
+            if [ "${table_label}" != "${disk_label}" ]; then
+                continue
+            fi
+
+            if [ "${table_start}" -ne "${disk_start}" ] || \
+               [ "${table_size}" -ne "${disk_size}" ]; then
+                unlink "${current_partition_table_file}"
+                return 0
+            fi
+        done < "${current_partition_table_file}"
+    done < "${PARTITION_TABLE_FILE}"
+
+    unlink "${current_partition_table_file}"
+    return 1
+}
+
 partition_sync()
 {
     i=10
@@ -37,6 +81,7 @@ partition_sync()
     done
 
     echo "Partprobe failed, giving up."
+
     return 1
 }
 
@@ -109,16 +154,6 @@ partitions_format()
 
 partition_resize()
 {
-    is_integer()
-    {
-        test "${1}" -eq "${1}" 2> /dev/null
-    }
-
-    is_comment()
-    {
-        test -z "${1%%#*}"
-    }
-
     if ! sha512sum -csw "${PARTITION_TABLE_FILE}.sha512"; then
         echo "Error processing partition table: crc error."
         exit 1
@@ -194,6 +229,17 @@ TARGET_DISK="${*}"
 if [ ! -r "${PARTITION_TABLE_FILE}" ]; then
     echo "Unable to read partition table file '${PARTITION_TABLE_FILE}', cannot continue."
     exit 1
+fi
+
+if [ ! -b "${TARGET_DISK}" ]; then
+    echo "Error, block device '${TARGET_DISK}' does not exist."
+    exit 1
+fi
+
+resize_needed="$(is_resize_needed; echo "${?}")"
+if [ "${resize_needed}" -eq 1 ]; then
+    echo "Partition resize not required."
+    exit 0
 fi
 
 partition_resize
