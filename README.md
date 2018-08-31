@@ -37,9 +37,8 @@ By default the build script runs an environment check, builds the image and then
 During the initramfs routine (executed between 2st stage U-boot and 3th stage Linux debian load) this toolbox image mounted and the executable entryscript '/sbin/startup.sh' will be executed. This script shall be used to execute any required routine. Very important here is to make sure all required resources are nicely cleaned up and errors are properly handled, not to bring the system in an unrecoverable state. 
 
 ## Updating the docker image in the docker registry
-We only want to update the docker image when required and we only want to do this after quality checks and when merged to master. Therefore Docker container changes should be tested locally first. Build a container locally and pass it to the build script. 
+We only want to update the docker image when required and we only want to do this after quality checks and when merged to master. Therefore Docker container changes should be tested locally first. To build a container locally all is needed to pass the name of the request image to the build script, and it will try to pull the image (which will fail) and build and run with the local image instead.
 ```sh
-> docker build -t local_test_image_name .
 > CI_REGISTRY_IMAGE="local_test_image_name" ./build_for_ultimaker.sh
 ```
 To make the changes available in the Docker repository follow the instruction as described on the confluence [CI/CD](https://confluence.ultimaker.com:8443/pages/viewpage.action?pageId=12431561) page.
