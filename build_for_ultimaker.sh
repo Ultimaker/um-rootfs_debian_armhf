@@ -31,6 +31,14 @@ cleanup()
     unset ARM_EMU_BIN
 }
 
+update_docker_image()
+{
+    if ! docker pull "${CI_REGISTRY_IMAGE}:${CI_REGISTRY_IMAGE_TAG}" 2> /dev/null; then
+        echo "Unable to update docker image '${CI_REGISTRY_IMAGE}:${CI_REGISTRY_IMAGE_TAG}', building locally instead."
+        docker build . -t "${CI_REGISTRY_IMAGE}:${CI_REGISTRY_IMAGE_TAG}"
+    fi
+}
+
 setup_emulation_support()
 {
     for emu in /proc/sys/fs/binfmt_misc/*; do
@@ -134,6 +142,10 @@ done
 shift "$((OPTIND - 1))"
 
 setup_emulation_support
+
+if command -V docker; then
+    update_docker_image
+fi
 
 if [ "${run_env_check}" = "yes" ]; then
     env_check
