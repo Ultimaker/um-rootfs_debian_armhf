@@ -49,6 +49,11 @@ lint_package_build_script:
   script:
     - shellcheck -C -f tty -s sh build.sh
 
+lint_prepare_disk_script:
+  <<: *shell_linting_common
+  script:
+    - shellcheck -C -f tty -s sh scripts/30_prepare_disk.sh
+
 # Build environment
 # The 'prepare' and the 'push' stages are executed conditionally. They both include
 # 'environment_common' that makes sure that the stage is only performed when the
