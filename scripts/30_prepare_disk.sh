@@ -8,18 +8,24 @@
 
 set -eu
 
-PARTITION_TABLE_FILE="${PARTITION_TABLE_FILE:-}"
-TARGET_DISK="${TARGET_DISK:-}"
+# system_update wide configuration settings with default values
+SYSTEM_UPDATE_DIR="${SYSTEM_UPDATE_DIR:-/etc/system_update}"
+PARTITION_TABLE_FILE="${PARTITION_TABLE_FILE:-jedi_emmc_sfdisk.table}"
+TARGET_STORAGE_DEVICE="${TARGET_STORAGE_DEVICE:-}"
+# end system_update wide configuration settings
 
 BOOT_PARTITION_START="2048"
 
 usage()
 {
-    echo "Usage: ${0} [OPTIONS] <DISK>"
-    echo "Prepare the target DISK to a predefined disk layout."
-    echo "  -t Partition table file (mandatory)"
+    echo "Usage: ${0} [OPTIONS]"
+    echo "Prepare the target TARGET_STORAGE_DEVICE to a predefined disk layout."
+    echo "  -d <TARGET_STORAGE_DEVICE>, the target storage device for the update"
     echo "  -h Print this help text and exit"
+    echo "  -t <PARTITION_TABLE_FILE>, Partition table file"
     echo "NOTE: This script is destructive and will destroy your data."
+    echo "Note: the PARTITION_TABLE_FILE and TARGET_STORAGE_DEVICE arguments can also be passed by"
+    echo "adding them to the scripts runtime environment."
 }
 
 is_integer()
@@ -36,7 +42,8 @@ is_comment()
 is_resize_needed()
 {
     current_partition_table_file="$(mktemp)"
-    sfdisk -d "${TARGET_DISK}" > "${current_partition_table_file}"
+    sfdisk -d "${TARGET_STORAGE_DEVICE}" > "${current_partition_table_file}"
+    resize_needed=false
 
     while IFS="${IFS}:=," read -r table_label _ table_start _ table_size _; do
         if is_comment "${table_label}" || ! is_integer "${table_start}" || \
@@ -56,13 +63,18 @@ is_resize_needed()
 
             if [ "${table_start}" -ne "${disk_start}" ] || \
                [ "${table_size}" -ne "${disk_size}" ]; then
-                unlink "${current_partition_table_file}"
-                return 0
+                resize_needed=true
+                break 2
             fi
         done < "${current_partition_table_file}"
-    done < "${PARTITION_TABLE_FILE}"
+    done < "${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}"
 
     unlink "${current_partition_table_file}"
+
+    if [ "${resize_needed}" = "true" ]; then
+        return 0
+    fi
+
     return 1
 }
 
@@ -70,7 +82,7 @@ partition_sync()
 {
     i=10
     while [ "${i}" -gt 0 ]; do
-        if partprobe "${TARGET_DISK}"; then
+        if partprobe "${TARGET_STORAGE_DEVICE}"; then
             return
         fi
 
@@ -89,7 +101,7 @@ partitions_format()
 {
     # Parse the output of sfdisk and temporally expand the Input Field Separator
     # with ':=,' and treat them as whitespaces, in other words, ignore them.
-    sfdisk --quiet --dump "${TARGET_DISK}" | \
+    sfdisk --quiet --dump "${TARGET_STORAGE_DEVICE}" | \
     while IFS="${IFS}:=," read -r disk_label _ disk_start _ disk_size _; do
         while IFS="${IFS}:=," read -r table_label _ table_start _ table_size _; do
             if [ -z "${disk_start}" ] || [ -z "${table_start}" ] || \
@@ -98,7 +110,7 @@ partitions_format()
             fi
 
             if [ ! -b "${disk_label}" ]; then
-                echo "ERROR: '${disk_label}' is not a block device, cannot continue"
+                echo "Error: '${disk_label}' is not a block device, cannot continue"
                 exit 1
             fi
 
@@ -112,8 +124,8 @@ partitions_format()
             # and then format the partition. If the partition was already valid,
             # just resize the existing one. If fsck or resize fails, reformat.
             partition="$(echo "${disk_label}" | sed -rn 's|.*(p[[:digit:]]+$)|\1|p')"
-            if fstype="$(blkid -o value -s TYPE "${TARGET_DISK}${partition}")"; then
-                echo "Attempting to resize partition ${TARGET_DISK}${partition}"
+            if fstype="$(blkid -o value -s TYPE "${TARGET_STORAGE_DEVICE}${partition}")"; then
+                echo "Attempting to resize partition ${TARGET_STORAGE_DEVICE}${partition}"
                 case "${fstype}" in
                 ext4)
                     fsck_cmd="fsck.ext4 -f -y"
@@ -132,29 +144,29 @@ partitions_format()
                 # In some cases of fsck, other values then 0 are acceptable,
                 # as such we need to capture the return value or else set -u
                 # will trigger eval as a failure and abort the script.
-                fsck_status="$(eval "${fsck_cmd}" "${TARGET_DISK}${partition}" 1> /dev/null; echo "${?}")"
+                fsck_status="$(eval "${fsck_cmd}" "${TARGET_STORAGE_DEVICE}${partition}" 1> /dev/null; echo "${?}")"
                 if [ "${fsck_ret_ok}" -ge "${fsck_status}" ] && \
-                   ! eval "${resize_cmd}" "${TARGET_DISK}${partition}"; then
+                   ! eval "${resize_cmd}" "${TARGET_STORAGE_DEVICE}${partition}"; then
                         echo "Resize failed, formatting instead."
-                        eval "${mkfs_cmd}" "${TARGET_DISK}${partition}"
+                        eval "${mkfs_cmd}" "${TARGET_STORAGE_DEVICE}${partition}"
                 fi
             else
-                echo "Formatting ${TARGET_DISK}${partition}"
+                echo "Formatting ${TARGET_STORAGE_DEVICE}${partition}"
                 if [ "${disk_start}" -eq "${BOOT_PARTITION_START}" ]; then
                     mkfs_cmd="mkfs.ext4 -F -L ${table_label}"
                 else
                     mkfs_cmd="mkfs.f2fs -f -l ${table_label}"
                 fi
 
-                eval "${mkfs_cmd}" "${TARGET_DISK}${partition}"
+                eval "${mkfs_cmd}" "${TARGET_STORAGE_DEVICE}${partition}"
             fi
-        done < "${PARTITION_TABLE_FILE}"
+        done < "${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}"
     done
 }
 
 partition_resize()
 {
-    if ! sha512sum -csw "${PARTITION_TABLE_FILE}.sha512"; then
+    if ! sha512sum -csw "${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}.sha512"; then
         echo "Error processing partition table: crc error."
         exit 1
     fi
@@ -162,7 +174,7 @@ partition_resize()
     boot_partition_available=false
 
     # sfdisk returns size in blocks, * (1024 / 512) converts to sectors
-    target_disk_end="$(($(sfdisk --quiet --show-size "${TARGET_DISK}" 2> /dev/null) * 2))"
+    target_disk_end="$(($(sfdisk --quiet --show-size "${TARGET_STORAGE_DEVICE}" 2> /dev/null) * 2))"
 
     # Temporally expand the Input Field Separator with ':=,' and treat them
     # as whitespaces, in other words, ignore them.
@@ -181,24 +193,27 @@ partition_resize()
             echo "Partition '${label}' is beyond the size of the disk (${partition_end} > ${target_disk_end}), cannot continue."
             exit 1
         fi
-    done < "${PARTITION_TABLE_FILE}"
+    done < "${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}"
 
     if ! "${boot_partition_available}"; then
         echo "Error, no boot partition available, cannot continue."
         exit 1
     fi
 
-    sfdisk --quiet "${TARGET_DISK}" < "${PARTITION_TABLE_FILE}"
+    sfdisk --quiet "${TARGET_STORAGE_DEVICE}" < "${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}"
 }
 
-while getopts ":t:h" options; do
+while getopts ":d:ht:" options; do
     case "${options}" in
-    t)
-        PARTITION_TABLE_FILE="${OPTARG}"
+    d)
+        TARGET_STORAGE_DEVICE="${OPTARG}"
         ;;
     h)
         usage
         exit 0
+        ;;
+    t)
+        PARTITION_TABLE_FILE="${OPTARG}"
         ;;
     :)
         echo "Option -${OPTARG} requires an argument."
@@ -212,32 +227,23 @@ while getopts ":t:h" options; do
 done
 shift "$((OPTIND - 1))"
 
-if [ "${#}" -lt 1 ]; then
-    echo "Missing argument <disk>."
+if [ -z "${PARTITION_TABLE_FILE}" ] || [ -z "${TARGET_STORAGE_DEVICE}" ]; then
+    echo "Missing arguments <PARTITION_TABLE_FILE> and/or <TARGET_STORAGE_DEVICE>."
     usage
     exit 1
 fi
 
-if [ "${#}" -gt 1 ]; then
-    echo "Too many arguments."
-    usage
+if [ ! -r "${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}" ]; then
+    echo "Unable to read partition table file '${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}', cannot continue."
     exit 1
 fi
 
-TARGET_DISK="${*}"
-
-if [ ! -r "${PARTITION_TABLE_FILE}" ]; then
-    echo "Unable to read partition table file '${PARTITION_TABLE_FILE}', cannot continue."
+if [ ! -b "${TARGET_STORAGE_DEVICE}" ]; then
+    echo "Error, block device '${TARGET_STORAGE_DEVICE}' does not exist."
     exit 1
 fi
 
-if [ ! -b "${TARGET_DISK}" ]; then
-    echo "Error, block device '${TARGET_DISK}' does not exist."
-    exit 1
-fi
-
-resize_needed="$(is_resize_needed; echo "${?}")"
-if [ "${resize_needed}" -eq 1 ]; then
+if ! is_resize_needed; then
     echo "Partition resize not required."
     exit 0
 fi
