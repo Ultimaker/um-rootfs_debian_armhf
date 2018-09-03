@@ -39,6 +39,11 @@ lint_build_environment:
   script:
     - shellcheck -C -f tty -s sh test/buildenv.sh
 
+lint_update_files_script:
+  <<: *shell_linting_common
+  script:
+    - shellcheck -C -f tty -s sh scripts/50_update_files.sh
+
 lint_local_build_script:
   <<: *shell_linting_common
   script:
