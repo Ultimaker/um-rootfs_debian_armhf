@@ -13,6 +13,7 @@ LABEL Maintainer="software-embedded-platform@ultimaker.com" \
 RUN apk add --no-cache \
         e2fsprogs \
         f2fs-tools \
+        rsync \
         sfdisk \
         squashfs-tools \
         util-linux \

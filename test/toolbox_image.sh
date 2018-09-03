@@ -10,8 +10,10 @@ set -eu
 
 ARM_EMU_BIN="${ARM_EMU_BIN:-}"
 
-SYSTEM_UPDATE_ENTRYPOINT="/sbin/startup.sh"
-DISK_PREPARE_COMMAND="/sbin/prepare_disk.sh"
+SYSTEM_UPDATE_DIR="/etc/system_update"
+SYSTEM_UPDATE_ENTRYPOINT="start_update.sh"
+PREPARE_DISK_COMMAND="${SYSTEM_UPDATE_DIR}.d/30_prepare_disk.sh"
+JEDI_PARTITION_TABLE_FILE_NAME="${SYSTEM_UPDATE_DIR}/jedi_emmc_sfdisk.table"
 
 # Test storage device parameters.
 # All storage start and and parameters are sector numbers. actual byte positions
@@ -52,7 +54,7 @@ execute_prepare_disk()
 {
     # sha512sum is executed in the chroot environment to avoid that rootfs dir is prefixed to the file path.
     chroot "${rootfs_dir}" sha512sum "${PARTITION_TABLE_FILE}" > "${rootfs_dir}${PARTITION_TABLE_FILE}.sha512" || return 1
-    chroot "${rootfs_dir}" "${DISK_PREPARE_COMMAND}" -t "${PARTITION_TABLE_FILE}" "${LOOP_STORAGE_DEVICE}" || return 1
+    chroot "${rootfs_dir}" "${PREPARE_DISK_COMMAND}" -t "${PARTITION_TABLE_FILE}" "${LOOP_STORAGE_DEVICE}" || return 1
 
     sfdisk -d "${LOOP_STORAGE_DEVICE}" > "${rootfs_dir}${PARTITION_TABLE_FILE}.verify"
 
@@ -309,14 +311,15 @@ test_execute_rsync()
 
 test_system_update_entrypoint()
 {
-    test -x "${rootfs_dir}${SYSTEM_UPDATE_ENTRYPOINT}"
+    test -x "${rootfs_dir}${SYSTEM_UPDATE_DIR}.d/${SYSTEM_UPDATE_ENTRYPOINT}" || return 1
+    test -L "${rootfs_dir}/sbin/${SYSTEM_UPDATE_ENTRYPOINT}" || return 1
 }
 
 test_execute_disk_prepare_sha512_nok()
 {
     chroot "${rootfs_dir}" sha512sum "${PARTITION_TABLE_FILE}" > "${rootfs_dir}${PARTITION_TABLE_FILE}.sha512"
     echo "corrupted partition table data" >> "${rootfs_dir}${PARTITION_TABLE_FILE}"
-    chroot "${rootfs_dir}" "${DISK_PREPARE_COMMAND}" -t "${PARTITION_TABLE_FILE}" "${LOOP_STORAGE_DEVICE}" || return 0
+    chroot "${rootfs_dir}" "${PREPARE_DISK_COMMAND}" -t "${PARTITION_TABLE_FILE}" "${LOOP_STORAGE_DEVICE}" || return 0
 }
 
 test_execute_resize_partition_grow_rootfs_ok()
