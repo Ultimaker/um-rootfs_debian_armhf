@@ -31,6 +31,9 @@ LOOP_STORAGE_DEVICE=""
 PARTITION_TABLE_FILE_NAME="partition_table"
 PARTITION_TABLE_FILE="${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE_NAME}"
 TMP_TEST_IMAGE_FILE="/tmp/test_file.img"
+UPDATE_SOURCE="/tmp/update_source"
+UPDATE_EXCLUDE_LIST_FILE="config/jedi_update_exclude_list.txt"
+TEST_UPDATE_ROOTFS_FILE="test/test_rootfs.tar.xz"
 
 overlayfs_dir=""
 rootfs_dir=""
@@ -123,6 +126,10 @@ setup()
           -o "lowerdir=${overlayfs_dir}/rom,upperdir=${overlayfs_dir}/up,workdir=${overlayfs_dir}/work" \
           "${rootfs_dir}"
 
+    mkdir -p "${rootfs_dir}${UPDATE_SOURCE}"
+    tar xvfJ "${TEST_UPDATE_ROOTFS_FILE}" -C "${rootfs_dir}${UPDATE_SOURCE}" \
+        > /dev/null 2> /dev/null
+
     touch "${rootfs_dir}/${ARM_EMU_BIN}"
     mount --bind -o ro "${ARM_EMU_BIN}" "${rootfs_dir}/${ARM_EMU_BIN}"
 
@@ -154,6 +161,10 @@ teardown()
     for partition_table_file in "${rootfs_dir}${PARTITION_TABLE_FILE}"*; do
         unlink "${partition_table_file}"
     done
+
+    if [ -d "${rootfs_dir}${UPDATE_SOURCE}" ]; then
+        rm -rf "${rootfs_dir}${UPDATE_SOURCE}"
+    fi
 
     if [ -b "${LOOP_STORAGE_DEVICE}" ]; then
         losetup -d "${LOOP_STORAGE_DEVICE}"
@@ -309,6 +320,18 @@ test_system_update_entrypoint()
     test -L "${rootfs_dir}/sbin/${SYSTEM_UPDATE_ENTRYPOINT}" || return 1
 }
 
+test_jedi_exclude_list_exists()
+{
+    update_exclude_list_file="jedi_update_exclude_list.txt"
+    test -f "${rootfs_dir}${SYSTEM_UPDATE_DIR}/${update_exclude_list_file}" || return 1
+}
+
+test_jedi_partition_table_file_exists()
+{
+    jedi_partition_table_file="jedi_emmc_sfdisk.table"
+    test -f "${rootfs_dir}${SYSTEM_UPDATE_DIR}/${jedi_partition_table_file}" || return 1
+}
+
 test_execute_disk_prepare_sha512_nok()
 {
     chroot "${rootfs_dir}" sha512sum "${PARTITION_TABLE_FILE}" > "${rootfs_dir}${PARTITION_TABLE_FILE}.sha512"
@@ -345,6 +368,34 @@ test_execute_disk_prepare_resize_not_needed_ok()
 {
     execute_prepare_disk || return 1
     test_disk_integrity || return 1
+}
+
+test_execute_update_no_update_source_option_passed_nok()
+{
+    chroot "${rootfs_dir}" "${UPDATE_FILES_COMMAND}" -s "" -d "${LOOP_STORAGE_DEVICE}p2" || return 0
+}
+
+test_execute_update_invalid_block_device_nok()
+{
+    target_device="/dev/loop100"
+    chroot "${rootfs_dir}" "${UPDATE_FILES_COMMAND}" -s "${UPDATE_SOURCE}" -d "${target_device}" || return 0
+}
+
+test_execute_update_target_device_ok()
+{
+    chroot "${rootfs_dir}" "${UPDATE_FILES_COMMAND}" -s "${UPDATE_SOURCE}" -d "${LOOP_STORAGE_DEVICE}" || return 1
+
+    update_target="$(mktemp -d)"
+    mount -t auto -v "${LOOP_STORAGE_DEVICE}p2" "${update_target}" || return 1
+
+    rsync --exclude-from "${UPDATE_EXCLUDE_LIST_FILE}" -c -a -x --dry-run \
+        "${rootfs_dir}${UPDATE_SOURCE}/" "${update_target}/" || return 1
+
+    umount "${update_target}"
+
+    if [ -z "${update_target##*/tmp/*}" ]; then
+        rm -rf "${update_target}"
+    fi
 }
 
 usage()
@@ -412,9 +463,15 @@ run_test test_execute_resizef2fs
 run_test test_execute_mount
 run_test test_execute_rsync
 run_test test_system_update_entrypoint
+run_test test_jedi_exclude_list_exists
+run_test test_jedi_partition_table_file_exists
 run_test test_execute_disk_prepare_sha512_nok
+run_test test_execute_disk_prepare_with_arguments_from_environment_ok
 run_test test_execute_resize_partition_grow_rootfs_ok
 run_test test_execute_disk_prepare_resize_not_needed_ok
+run_test test_execute_update_no_update_source_option_passed_nok
+run_test test_execute_update_invalid_block_device_nok
+run_test test_execute_update_target_device_ok
 
 
 if [ "${result}" -ne 0 ]; then
