@@ -22,12 +22,13 @@ STORAGE_DEVICE_IMG="/tmp/storage_device.img"
 BYTES_PER_SECTOR="512"
 MIN_PARTITION_SIZE="78124"    # 40 MiB (enough for f2fs and ext4)
 STORAGE_DEVICE_SIZE="7553024" # sectors, about 3.6 GiB
-BOOT_START="2048"             # offset 1 MiB
+#BOOT_START="2048"             # offset 1 MiB
 ROOTFS_START="67584"          # offset 33 MiB
 USERDATA_START="1998848"      # offset 976 MiB
 LOOP_STORAGE_DEVICE=""
-PARTITION_TABLE_FILE="/tmp/partition_table"
 
+PARTITION_TABLE_FILE_NAME="partition_table"
+PARTITION_TABLE_FILE="${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE_NAME}"
 TMP_TEST_IMAGE_FILE="/tmp/test_file.img"
 
 overlayfs_dir=""
@@ -54,7 +55,7 @@ execute_prepare_disk()
 {
     # sha512sum is executed in the chroot environment to avoid that rootfs dir is prefixed to the file path.
     chroot "${rootfs_dir}" sha512sum "${PARTITION_TABLE_FILE}" > "${rootfs_dir}${PARTITION_TABLE_FILE}.sha512" || return 1
-    chroot "${rootfs_dir}" "${PREPARE_DISK_COMMAND}" -t "${PARTITION_TABLE_FILE}" "${LOOP_STORAGE_DEVICE}" || return 1
+    chroot "${rootfs_dir}" "${PREPARE_DISK_COMMAND}" -t "${PARTITION_TABLE_FILE_NAME}" -d "${LOOP_STORAGE_DEVICE}" || return 1
 
     sfdisk -d "${LOOP_STORAGE_DEVICE}" > "${rootfs_dir}${PARTITION_TABLE_FILE}.verify"
 
@@ -82,15 +83,7 @@ create_dummy_storage_device()
 
     echo "writing partition table:"
 
-    sfdisk "${rootfs_dir}${STORAGE_DEVICE_IMG}" << \
-________________________________________________________________________________
-label: dos
-unit: sectors
-
-boot     : start=${BOOT_START},     size=$((ROOTFS_START - BOOT_START)),            Id=82
-rootfs   : start=${ROOTFS_START},   size=$((USERDATA_START - ROOTFS_START)),        Id=83
-userdata : start=${USERDATA_START}, size=$((STORAGE_DEVICE_SIZE - USERDATA_START)), Id=83
-________________________________________________________________________________
+    sfdisk "${rootfs_dir}${STORAGE_DEVICE_IMG}" < "${rootfs_dir}${JEDI_PARTITION_TABLE_FILE_NAME}"
 
     echo "formatting partitions"
 
@@ -157,8 +150,8 @@ teardown()
         return
     fi
 
-    for partition_file in "${rootfs_dir}${PARTITION_TABLE_FILE}"*; do
-        unlink "${partition_file}"
+    for partition_table_file in "${rootfs_dir}${PARTITION_TABLE_FILE}"*; do
+        unlink "${partition_table_file}"
     done
 
     if [ -b "${LOOP_STORAGE_DEVICE}" ]; then
@@ -319,7 +312,15 @@ test_execute_disk_prepare_sha512_nok()
 {
     chroot "${rootfs_dir}" sha512sum "${PARTITION_TABLE_FILE}" > "${rootfs_dir}${PARTITION_TABLE_FILE}.sha512"
     echo "corrupted partition table data" >> "${rootfs_dir}${PARTITION_TABLE_FILE}"
-    chroot "${rootfs_dir}" "${PREPARE_DISK_COMMAND}" -t "${PARTITION_TABLE_FILE}" "${LOOP_STORAGE_DEVICE}" || return 0
+    chroot "${rootfs_dir}" "${PREPARE_DISK_COMMAND}" -t "${PARTITION_TABLE_FILE_NAME}" -d "${LOOP_STORAGE_DEVICE}" || return 0
+}
+
+test_execute_disk_prepare_with_arguments_from_environment_ok()
+{
+    chroot "${rootfs_dir}" sha512sum "${PARTITION_TABLE_FILE}" > "${rootfs_dir}${PARTITION_TABLE_FILE}.sha512"
+    chroot "${rootfs_dir}" /bin/sh -c \
+        "PARTITION_TABLE_FILE=${PARTITION_TABLE_FILE_NAME} TARGET_STORAGE_DEVICE=${LOOP_STORAGE_DEVICE} ${PREPARE_DISK_COMMAND}" \
+            || return 1
 }
 
 test_execute_resize_partition_grow_rootfs_ok()
