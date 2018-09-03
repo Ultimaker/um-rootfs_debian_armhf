@@ -1,0 +1,5 @@
+/tmp/
+/var/lib/griffin/
+/var/lib/connman/
+/media/
+/etc/dropbear/
