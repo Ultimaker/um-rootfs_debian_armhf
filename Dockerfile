@@ -11,10 +11,11 @@ LABEL Maintainer="software-embedded-platform@ultimaker.com" \
       Comment="Ultimaker update-tools filesystem"
 
 RUN apk add --no-cache \
+        dpkg \
         e2fsprogs \
         f2fs-tools \
-        dpkg \
         gettext \
+        rsync \
         sfdisk \
         squashfs-tools \
         util-linux \

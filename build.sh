@@ -10,11 +10,12 @@ set -eu
 
 ARCH="${ARCH:-armhf}"
 ARM_EMU_BIN="${ARM_EMU_BIN:-}"
-CUR_DIR="$(pwd)"
-BUILD_DIR="${CUR_DIR}/.build_${ARCH}"
+SYSTEM_UPDATE_DIR="${SYSTEM_UPDATE_DIR:-/etc/system_update}"
 ALPINE_VERSION="${ALPINE_VERSION:-latest-stable}"
 ALPINE_REPO="${ALPINE_REPO:-http://dl-cdn.alpinelinux.org/alpine}"
 TOOLBOX_IMAGE="${TOOLBOX_IMAGE:-um-update_toolbox.xz.img}"
+CUR_DIR="$(pwd)"
+BUILD_DIR="${CUR_DIR}/.build_${ARCH}"
 ROOTFS_DIR="${BUILD_DIR}/rootfs"
 
 PACKAGES="blkid busybox e2fsprogs-extra f2fs-tools rsync sfdisk"
@@ -71,20 +72,36 @@ bootstrap_unprepare()
 
 add_update_scripts()
 {
-    local_script_dir="${CUR_DIR}/scripts"
-    target_script_dir="${ROOTFS_DIR}/sbin"
-    entrypoint="startup.sh"
-
-    if [ ! -f "${local_script_dir}/${entrypoint}" ]; then
-        echo "Missing entrypoint script '${local_script_dir}/${entrypoint}'."
-        exit 1
+    target_script_dir="${ROOTFS_DIR}${SYSTEM_UPDATE_DIR}.d"
+    if [ ! -d "${target_script_dir}" ]; then
+        mkdir -p "${target_script_dir}"
     fi
 
+    local_script_dir="${CUR_DIR}/scripts"
     for script in "${local_script_dir}"/*.sh; do
         basename="${script##*/}"
         echo "Installing ${script} on '${target_script_dir}/${basename}'."
         cp "${script}" "${target_script_dir}/${basename}"
         chmod +x "${target_script_dir}/${basename}"
+    done
+
+    entrypoint_script="start_update.sh"
+    chroot "${ROOTFS_DIR}" ln -s "${SYSTEM_UPDATE_DIR}.d/${entrypoint_script}" "/sbin/${entrypoint_script}"
+}
+
+add_configuration_files()
+{
+    local_config_dir="${CUR_DIR}/config"
+    target_config_dir="${ROOTFS_DIR}/etc/system_update"
+
+    if [ ! -d "${target_config_dir}" ]; then
+        mkdir -p "${target_config_dir}"
+    fi
+
+    for config_file in "${local_config_dir}/"*; do
+        basename="${config_file##*/}"
+        echo "Installing ${config_file} on '${target_config_dir}/${basename}'."
+        cp "${config_file}" "${target_config_dir}/${basename}"
     done
 }
 
@@ -178,6 +195,7 @@ cleanup
 bootstrap_prepare
 bootstrap_rootfs
 add_update_scripts
+add_configuration_files
 bootstrap_unprepare
 compress_rootfs
 create_debian_package
