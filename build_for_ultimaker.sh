@@ -94,6 +94,9 @@ run_build()
     else
         ./build.sh
     fi
+
+    # We need to place the .deb file in the root folder, as jedi-build expects it there.
+    cp "${BUILD_DIR}/"*.deb "./"
 }
 
 run_tests()

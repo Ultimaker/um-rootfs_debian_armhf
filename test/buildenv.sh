@@ -12,7 +12,7 @@ ARM_EMU_BIN="${ARM_EMU_BIN:-}"
 BINFMT_MISC="${BINFMT_MISC:-/proc/sys/fs/binfmt_misc/}"
 
 FILESYSTEMS="ext4 f2fs overlay squashfs tmpfs"
-COMMANDS="apk blkid fsck.ext4 fsck.f2fs losetup mkfs.ext4 mkfs.f2fs mksquashfs sed sfdisk shuf xz"
+COMMANDS="apk blkid dpkg fsck.ext4 fsck.f2fs gettext losetup mkfs.ext4 mkfs.f2fs mksquashfs sed sfdisk shuf tar xz"
 
 ARMv7_MAGIC="7f454c4601010100000000000000000002002800"
 
