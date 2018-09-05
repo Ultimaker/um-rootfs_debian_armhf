@@ -41,12 +41,12 @@ usage()
 cleanup()
 {
     if [ -d "${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}" ]; then
-        echo "Cleaning up, removing '${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}/' files."
+        echo "Cleaning up, removing: '${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}/' files."
         rm -rf "${TOOLBOX_MOUNT:?}/${UPDATE_ROOTFS_SOURCE:?}"/*
     fi
 
     if [ -f "${UPDATE_MOUNT}/${update_rootfs_archive}" ]; then
-        echo "Cleaning up, removing '${UPDATE_MOUNT}/${update_rootfs_archive}'."
+        echo "Cleaning up, removing: '${UPDATE_MOUNT}/${update_rootfs_archive}'."
         rm "${UPDATE_MOUNT:?}/${update_rootfs_archive:?}"
     fi
 
@@ -58,6 +58,8 @@ cleanup()
 
 extract_update_rootfs()
 {
+    echo "Preparing update files..."
+
     update_rootfs_pattern="rootfs*.tar.xz"
 
     echo "Looking for update rootfs files with the pattern '${update_rootfs_pattern}' on '${UPDATE_MOUNT}/${update_rootfs_archive}'."
@@ -188,6 +190,7 @@ if [ ! -f "${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR}/${UPDATE_EXCLUDE_LIST_FILE}" ]; 
     exit 1
 fi
 
+trap cleanup EXIT
 
 if ! extract_update_rootfs; then
    echo "Update failed: unable to prepare update files."
