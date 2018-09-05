@@ -77,8 +77,13 @@ add_update_scripts()
         mkdir -p "${target_script_dir}"
     fi
 
+    target_system_executable_dir="${ROOTFS_DIR}/sbin"
+    if [ ! -d "${target_system_executable_dir}" ]; then
+        mkdir -p "${target_system_executable_dir}"
+    fi
+
     local_script_dir="${CUR_DIR}/scripts"
-    for script in "${local_script_dir}"/*.sh; do
+    for script in "${local_script_dir}"/[0-9][0-9]_*.sh; do
         basename="${script##*/}"
         echo "Installing ${script} on '${target_script_dir}/${basename}'."
         cp "${script}" "${target_script_dir}/${basename}"
@@ -86,7 +91,10 @@ add_update_scripts()
     done
 
     entrypoint_script="start_update.sh"
-    chroot "${ROOTFS_DIR}" ln -s "${SYSTEM_UPDATE_DIR}.d/${entrypoint_script}" "/sbin/${entrypoint_script}"
+    cp "${local_script_dir}/${entrypoint_script}" "${target_system_executable_dir}/${entrypoint_script}"
+    chmod +x "${target_system_executable_dir}/${entrypoint_script}"
+}
+
 }
 
 add_configuration_files()
