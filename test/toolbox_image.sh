@@ -316,8 +316,7 @@ test_execute_rsync()
 
 test_system_update_entrypoint()
 {
-    test -x "${rootfs_dir}${SYSTEM_UPDATE_DIR}.d/${SYSTEM_UPDATE_ENTRYPOINT}" || return 1
-    test -L "${rootfs_dir}/sbin/${SYSTEM_UPDATE_ENTRYPOINT}" || return 1
+    test -x "${rootfs_dir}/sbin/${SYSTEM_UPDATE_ENTRYPOINT}" || return 1
 }
 
 test_jedi_exclude_list_exists()

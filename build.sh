@@ -10,13 +10,18 @@ set -eu
 
 ARCH="${ARCH:-armhf}"
 ARM_EMU_BIN="${ARM_EMU_BIN:-}"
-SYSTEM_UPDATE_DIR="${SYSTEM_UPDATE_DIR:-/etc/system_update}"
+
 ALPINE_VERSION="${ALPINE_VERSION:-latest-stable}"
 ALPINE_REPO="${ALPINE_REPO:-http://dl-cdn.alpinelinux.org/alpine}"
+
 TOOLBOX_IMAGE="${TOOLBOX_IMAGE:-um-update_toolbox.xz.img}"
+
 CUR_DIR="$(pwd)"
 BUILD_DIR="${CUR_DIR}/.build_${ARCH}"
 ROOTFS_DIR="${BUILD_DIR}/rootfs"
+
+SYSTEM_UPDATE_DIR="/etc/system_update"
+UPDATE_ROOTFS_SOURCE="/mnt/update_rootfs_source"
 
 PACKAGES="blkid busybox e2fsprogs-extra f2fs-tools rsync sfdisk"
 
@@ -95,6 +100,12 @@ add_update_scripts()
     chmod +x "${target_system_executable_dir}/${entrypoint_script}"
 }
 
+create_update_mount_points()
+{
+    if [ ! -d "${ROOTFS_DIR}/${UPDATE_ROOTFS_SOURCE}" ]; then
+        echo "Creating update rootfs source directory '${ROOTFS_DIR}/${UPDATE_ROOTFS_SOURCE}'."
+        mkdir -p  "${ROOTFS_DIR}/${UPDATE_ROOTFS_SOURCE}"
+    fi
 }
 
 add_configuration_files()
@@ -203,6 +214,7 @@ cleanup
 bootstrap_prepare
 bootstrap_rootfs
 add_update_scripts
+create_update_mount_points
 add_configuration_files
 bootstrap_unprepare
 compress_rootfs
