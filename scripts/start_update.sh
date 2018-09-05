@@ -16,6 +16,15 @@ UPDATE_MOUNT=""
 # The target update storage device
 TARGET_STORAGE_DEVICE=""
 
+# Toolbox execution environment arguments
+# The directory in the chroot environment containing the system update and configuration files.
+SYSTEM_UPDATE_DIR="${SYSTEM_UPDATE_DIR:-/etc/system_update}"
+# The partition table file to use, default jedi_emmc_sfdisk.table, should exist in the system update dir.
+PARTITION_TABLE_FILE="${PARTITION_TABLE_FILE:-jedi_emmc_sfdisk.table}"
+# The exclude file list when updating the firmware files, should exist in the system update dir.
+UPDATE_EXCLUDE_LIST_FILE="${UPDATE_EXCLUDE_LIST_FILE:-jedi_update_exclude_list.txt}"
+# The directory in the chroot environment containing the source update files.
+UPDATE_ROOTFS_SOURCE="/mnt/update_rootfs_source"
 
 usage()
 {
@@ -100,13 +109,13 @@ if [ ! -d "${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR}" ]; then
     exit 1
 fi
 
-if [ ! -r "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}" ]; then
-    echo "Error, update failed: '${TOOLBOX_MOUNT}/${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}' is not readable."
+if [ ! -f "${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}" ]; then
+    echo "Error, update failed: '${TOOLBOX_MOUNT}${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}' not found."
     exit 1
 fi
 
-if [ ! -r "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_DIR}/${UPDATE_EXCLUDE_LIST_FILE}" ]; then
-    echo "Error, update failed: '${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_DIR}/${UPDATE_EXCLUDE_LIST_FILE}' is not readable."
+if [ ! -f "${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR}/${UPDATE_EXCLUDE_LIST_FILE}" ]; then
+    echo "Error, update failed: '${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR}/${UPDATE_EXCLUDE_LIST_FILE}' not found."
     exit 1
 fi
 
