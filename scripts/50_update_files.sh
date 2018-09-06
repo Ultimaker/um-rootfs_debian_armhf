@@ -11,7 +11,7 @@ set -eu
 SYSTEM_UPDATE_DIR="${SYSTEM_UPDATE_DIR:-/etc/system_update}"
 UPDATE_EXCLUDE_LIST_FILE="${UPDATE_EXCLUDE_LIST_FILE:-jedi_update_exclude_list.txt}"
 TARGET_STORAGE_DEVICE="${TARGET_STORAGE_DEVICE:-}"
-UPDATE_SOURCE="${UPDATE_SOURCE:-}"
+UPDATE_ROOTFS_SOURCE="${UPDATE_ROOTFS_SOURCE:-}"
 # end system_update wide configuration settings
 
 UPDATE_TARGET="/mnt/target_root"
@@ -41,8 +41,8 @@ perform_update()
     fi
 
     if ! rsync --exclude-from "${SYSTEM_UPDATE_DIR}/${UPDATE_EXCLUDE_LIST_FILE}" -c -a --delete -x \
-        "${UPDATE_SOURCE}/" "${UPDATE_TARGET}/"; then
-        echo "Error: unable to sync files from ${UPDATE_SOURCE}/ to ${UPDATE_TARGET}/."
+        "${UPDATE_ROOTFS_SOURCE}/" "${UPDATE_TARGET}/"; then
+        echo "Error: unable to sync files from ${UPDATE_ROOTFS_SOURCE}/ to ${UPDATE_TARGET}/."
         exit 1
     fi
 
@@ -61,7 +61,7 @@ while getopts ":d:hs:" options; do
         exit 0
         ;;
     s)
-        UPDATE_SOURCE="${OPTARG}"
+        UPDATE_ROOTFS_SOURCE="${OPTARG}"
         ;;
     :)
         echo "Option -${OPTARG} requires an argument."
@@ -75,14 +75,14 @@ while getopts ":d:hs:" options; do
 done
 shift "$((OPTIND - 1))"
 
-if [ -z "${UPDATE_SOURCE}" ] || [ -z "${TARGET_STORAGE_DEVICE}" ]; then
-    echo "Missing arguments <UPDATE_SOURCE> and/or <TARGET_STORAGE_DEVICE>."
+if [ -z "${UPDATE_ROOTFS_SOURCE}" ] || [ -z "${TARGET_STORAGE_DEVICE}" ]; then
+    echo "Missing arguments <UPDATE_ROOTFS_SOURCE> and/or <TARGET_STORAGE_DEVICE>."
     usage
     exit 1
 fi
 
-if [ ! -d "${UPDATE_SOURCE}" ]; then
-    echo "Update failed: ${UPDATE_SOURCE} does not exist."
+if [ ! -d "${UPDATE_ROOTFS_SOURCE}" ]; then
+    echo "Update failed: ${UPDATE_ROOTFS_SOURCE} does not exist."
     exit 1
 fi
 
