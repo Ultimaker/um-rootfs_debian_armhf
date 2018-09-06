@@ -403,10 +403,10 @@ test_execute_update_target_device_ok()
 usage()
 {
 cat <<-EOT
-	Usage:   "${0}" [OPTIONS] <file.img>
-	    -e   Stop consecutive tests on failure without cleanup
-	    -h   Print usage
-	NOTE: This script requires root permissions to run.
+    Usage:   "${0}" [OPTIONS] <file.img>
+        -e   Stop consecutive tests on failure without cleanup
+        -h   Print usage
+    NOTE: This script requires root permissions to run.
 EOT
 }
 
