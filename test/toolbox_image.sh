@@ -44,6 +44,7 @@ rootfs_dir=""
 update_mount=""
 
 result=0
+result_overview=""
 
 is_dev_setup_mounted=false
 exit_on_failure=false
@@ -261,6 +262,7 @@ cleanup()
 
 run_test()
 {
+    newline=$'\n'
     setup
 
     echo "________________________________________________________________________________"
@@ -270,8 +272,10 @@ run_test()
     echo
     if "${1}"; then
         echo "Result - OK"
+        result_overview="${result_overview}OK    - ${1}${newline}"
     else
         echo "Result - ERROR"
+        result_overview="${result_overview}ERROR - ${1}${newline}"
         result=1
         if "${exit_on_failure}"; then
             exit "${result}"
@@ -559,11 +563,14 @@ run_test test_execute_start_update_multiple_update_rootfs_files_nok
 run_test test_execute_start_update_successful_update_ok
 run_test test_execute_start_update_update_rootfs_mount_point_exists
 
+echo
+echo "Test results:"
+echo
+echo "${result_overview}"
+echo "________________________________________________________________________________"
+
 if [ "${result}" -ne 0 ]; then
-   echo "ERROR: There where failures testing '${ROOTFS_IMG}'."
    exit 1
 fi
-
-echo "All Ok"
 
 exit 0
