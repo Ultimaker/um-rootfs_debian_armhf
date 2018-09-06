@@ -92,7 +92,7 @@ extract_update_rootfs()
         return 1
     fi
 
-    if ! tar xvfJ "${UPDATE_MOUNT}/${update_rootfs_archive}" -C "${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}" \
+    if ! tar xfJ "${UPDATE_MOUNT}/${update_rootfs_archive}" -C "${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}" \
             > /dev/null 2> /dev/null; then
         echo "Error: unable to extract '${UPDATE_MOUNT}/${update_rootfs_archive}' to '${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}'."
         return 1
