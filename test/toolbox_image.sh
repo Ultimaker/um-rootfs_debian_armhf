@@ -16,6 +16,7 @@ SYSTEM_UPDATE_ENTRYPOINT="start_update.sh"
 PREPARE_DISK_COMMAND="${SYSTEM_UPDATE_DIR}.d/30_prepare_disk.sh"
 JEDI_PARTITION_TABLE_FILE_NAME="${SYSTEM_UPDATE_DIR}/jedi_emmc_sfdisk.table"
 UPDATE_FILES_COMMAND="${SYSTEM_UPDATE_DIR}.d/50_update_files.sh"
+START_UPDATE_COMMAND="${SYSTEM_EXECUTABLE_DIR}/${SYSTEM_UPDATE_ENTRYPOINT}"
 
 # Test storage device parameters.
 # All storage start and and parameters are sector numbers. actual byte positions
@@ -32,12 +33,15 @@ LOOP_STORAGE_DEVICE=""
 PARTITION_TABLE_FILE_NAME="partition_table"
 PARTITION_TABLE_FILE="${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE_NAME}"
 TMP_TEST_IMAGE_FILE="/tmp/test_file.img"
+
 UPDATE_SOURCE="/tmp/update_source"
 UPDATE_EXCLUDE_LIST_FILE="config/jedi_update_exclude_list.txt"
 TEST_UPDATE_ROOTFS_FILE="test/test_rootfs.tar.xz"
+TEMP_TEST_UPDATE_ROOTFS_FILE="rootfs-v1.2.3.tar.xz"
 
 overlayfs_dir=""
 rootfs_dir=""
+update_mount=""
 
 result=0
 
@@ -134,6 +138,8 @@ setup()
     tar xvfJ "${TEST_UPDATE_ROOTFS_FILE}" -C "${rootfs_dir}${UPDATE_SOURCE}" \
         > /dev/null 2> /dev/null
 
+    update_mount="$(mktemp -d)"
+
     touch "${rootfs_dir}/${ARM_EMU_BIN}"
     mount --bind -o ro "${ARM_EMU_BIN}" "${rootfs_dir}/${ARM_EMU_BIN}"
 
@@ -168,6 +174,10 @@ teardown()
 
     if [ -d "${rootfs_dir}${UPDATE_SOURCE}" ]; then
         rm -rf "${rootfs_dir}${UPDATE_SOURCE}"
+    fi
+
+    if [ -d "${update_mount}" ]; then
+        rm -r "${update_mount:?}"
     fi
 
     if [ -b "${LOOP_STORAGE_DEVICE}" ]; then
@@ -350,7 +360,7 @@ test_execute_disk_prepare_with_arguments_from_environment_ok()
             || return 1
 }
 
-test_execute_resize_partition_grow_rootfs_ok()
+test_execute_disk_prepare_grow_rootfs_ok()
 {
     max_userdata_size="$((STORAGE_DEVICE_SIZE - USERDATA_START))"
     new_userdata_size="$(random_int_within "${MIN_PARTITION_SIZE}" "${max_userdata_size}")"
@@ -373,18 +383,25 @@ test_execute_disk_prepare_resize_not_needed_ok()
     test_disk_integrity || return 1
 }
 
-test_execute_update_no_update_source_option_passed_nok()
+test_execute_update_files_no_update_source_option_passed_nok()
 {
     chroot "${rootfs_dir}" "${UPDATE_FILES_COMMAND}" -s "" -d "${LOOP_STORAGE_DEVICE}p2" || return 0
 }
 
-test_execute_update_invalid_block_device_nok()
+test_execute_update_files_with_arguments_from_environment_ok()
+{
+    chroot "${rootfs_dir}" /bin/sh -c \
+        "UPDATE_SOURCE=${UPDATE_SOURCE} TARGET_STORAGE_DEVICE=${LOOP_STORAGE_DEVICE} ${UPDATE_FILES_COMMAND}" \
+            || return 1
+}
+
+test_execute_update_files_invalid_block_device_nok()
 {
     target_device="/dev/loop100"
     chroot "${rootfs_dir}" "${UPDATE_FILES_COMMAND}" -s "${UPDATE_SOURCE}" -d "${target_device}" || return 0
 }
 
-test_execute_update_target_device_ok()
+test_execute_update_files_target_device_ok()
 {
     chroot "${rootfs_dir}" "${UPDATE_FILES_COMMAND}" -s "${UPDATE_SOURCE}" -d "${LOOP_STORAGE_DEVICE}" || return 1
 
@@ -399,6 +416,47 @@ test_execute_update_target_device_ok()
     if [ -z "${update_target##*/tmp/*}" ]; then
         rm -rf "${update_target}"
     fi
+}
+
+test_execute_start_update_rsync_ignore_file_not_found_nok()
+{
+    cp "${TEST_UPDATE_ROOTFS_FILE}" "${update_mount}/${TEMP_TEST_UPDATE_ROOTFS_FILE}"
+    rm "${rootfs_dir:?}${SYSTEM_UPDATE_DIR:?}/"*_exclude_list.txt
+    "${rootfs_dir}${START_UPDATE_COMMAND}" "${rootfs_dir}" "${update_mount}" "${LOOP_STORAGE_DEVICE}" || return 0
+}
+
+test_execute_start_update_partition_table_not_found_nok()
+{
+    cp "${TEST_UPDATE_ROOTFS_FILE}" "${update_mount}/${TEMP_TEST_UPDATE_ROOTFS_FILE}"
+    rm "${rootfs_dir:?}${SYSTEM_UPDATE_DIR:?}/"*.table
+    "${rootfs_dir}${START_UPDATE_COMMAND}" "${rootfs_dir}" "${update_mount}" "${LOOP_STORAGE_DEVICE}" || return 0
+}
+
+test_execute_start_update_update_rootfs_corrupt_nok()
+{
+    cp "${TEST_UPDATE_ROOTFS_FILE}" "${update_mount}/${TEMP_TEST_UPDATE_ROOTFS_FILE}"
+    echo "Append this data to corrupt the archive" >> "${update_mount}/${TEMP_TEST_UPDATE_ROOTFS_FILE}"
+    "${rootfs_dir}${START_UPDATE_COMMAND}" "${rootfs_dir}" "${update_mount}" "${LOOP_STORAGE_DEVICE}" || return 0
+}
+
+test_execute_start_update_multiple_update_rootfs_files_nok()
+{
+    cp "${TEST_UPDATE_ROOTFS_FILE}" "${update_mount}/${TEMP_TEST_UPDATE_ROOTFS_FILE}"
+    cp "${update_mount}/${TEMP_TEST_UPDATE_ROOTFS_FILE}" \
+        "${update_mount}/rootfs-v2.1.0.tar.xz"
+    "${rootfs_dir}${START_UPDATE_COMMAND}" "${rootfs_dir}" "${update_mount}" "${LOOP_STORAGE_DEVICE}" || return 0
+}
+
+test_execute_start_update_preparation_phase_ok()
+{
+    cp "${TEST_UPDATE_ROOTFS_FILE}" "${update_mount}/${TEMP_TEST_UPDATE_ROOTFS_FILE}"
+    "${rootfs_dir}${START_UPDATE_COMMAND}" "${rootfs_dir}" "${update_mount}" "${LOOP_STORAGE_DEVICE}" || return 1
+}
+
+test_execute_start_update_update_rootfs_mount_point_exists()
+{
+    update_rootfs_source="/mnt/update_rootfs_source"
+    test -d "${rootfs_dir}${update_rootfs_source}"
 }
 
 usage()
@@ -470,12 +528,18 @@ run_test test_jedi_exclude_list_exists
 run_test test_jedi_partition_table_file_exists
 run_test test_execute_disk_prepare_sha512_nok
 run_test test_execute_disk_prepare_with_arguments_from_environment_ok
-run_test test_execute_resize_partition_grow_rootfs_ok
+run_test test_execute_disk_prepare_grow_rootfs_ok
 run_test test_execute_disk_prepare_resize_not_needed_ok
-run_test test_execute_update_no_update_source_option_passed_nok
-run_test test_execute_update_invalid_block_device_nok
-run_test test_execute_update_target_device_ok
-
+run_test test_execute_update_files_no_update_source_option_passed_nok
+run_test test_execute_update_files_invalid_block_device_nok
+run_test test_execute_update_files_target_device_ok
+run_test test_execute_update_files_with_arguments_from_environment_ok
+run_test test_execute_start_update_partition_table_not_found_nok
+run_test test_execute_start_update_rsync_ignore_file_not_found_nok
+run_test test_execute_start_update_update_rootfs_corrupt_nok
+run_test test_execute_start_update_multiple_update_rootfs_files_nok
+run_test test_execute_start_update_preparation_phase_ok
+run_test test_execute_start_update_update_rootfs_mount_point_exists
 
 if [ "${result}" -ne 0 ]; then
    echo "ERROR: There where failures testing '${ROOTFS_IMG}'."
