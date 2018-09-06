@@ -14,7 +14,7 @@ TARGET_STORAGE_DEVICE="${TARGET_STORAGE_DEVICE:-}"
 UPDATE_ROOTFS_SOURCE="${UPDATE_ROOTFS_SOURCE:-}"
 # end system_update wide configuration settings
 
-UPDATE_TARGET="/mnt/target_root"
+UPDATE_TARGET="/tmp/target_root"
 
 usage()
 {

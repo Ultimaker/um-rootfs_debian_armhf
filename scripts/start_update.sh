@@ -50,15 +50,49 @@ cleanup()
         rm "${UPDATE_MOUNT:?}/${update_rootfs_archive:?}"
     fi
 
-    if grep -q "${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}" /proc/mounts; then
+    if grep -q "${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}" "/proc/mounts"; then
         echo "Cleaning up, unmount: '${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}'."
         umount "${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}"
+    fi
+
+    if grep -q "${TOOLBOX_MOUNT}/proc" "/proc/mounts"; then
+        echo "Cleaning up, unmount: '${TOOLBOX_MOUNT}/proc'."
+        umount "${TOOLBOX_MOUNT}/proc"
+    fi
+
+    if grep -q "${TOOLBOX_MOUNT}/tmp" "/proc/mounts"; then
+        echo "Cleaning up, unmount: '${TOOLBOX_MOUNT}/tmp'."
+        umount "${TOOLBOX_MOUNT}/tmp"
+    fi
+}
+
+prepare()
+{
+    echo "Preparing update..."
+
+    temp_folder="$(mktemp -d)"
+
+    if ! mount --bind "${temp_folder}" "${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}"; then
+        echo "Error, update failed: temp source update directory: '${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}' cannot be mounted."
+        return 1
+    fi
+
+    if ! grep -q "${TOOLBOX_MOUNT}/proc" "/proc/mounts"; then
+        mount --bind /proc "${TOOLBOX_MOUNT}/proc" || return 1
+    fi
+
+    if ! grep -q "${TOOLBOX_MOUNT}/dev" "/proc/mounts"; then
+        mount -t devtmpfs none "${TOOLBOX_MOUNT}/dev" || return 1
+    fi
+
+    if ! grep -q "${TOOLBOX_MOUNT}/tmp" "/proc/mounts"; then
+        mount -t tmpfs none "${TOOLBOX_MOUNT}/tmp" || return 1
     fi
 }
 
 extract_update_rootfs()
 {
-    echo "Preparing update files..."
+    echo "Extracting update files..."
 
     update_rootfs_pattern="rootfs*.tar.xz"
 
@@ -88,12 +122,6 @@ extract_update_rootfs()
         return 1
     fi
 
-    temp_folder="$(mktemp -d)"
-    if ! mount --bind "${temp_folder}" "${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}"; then
-        echo "Error, update failed: temp source update directory: '${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}' cannot be mounted."
-        return 1
-    fi
-
     if ! tar xfJ "${UPDATE_MOUNT}/${update_rootfs_archive}" -C "${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}" \
             > /dev/null 2> /dev/null; then
         echo "Error: unable to extract '${UPDATE_MOUNT}/${update_rootfs_archive}' to '${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}'."
@@ -101,6 +129,28 @@ extract_update_rootfs()
     fi
 
     echo "Successfully extracted '${UPDATE_MOUNT}/${update_rootfs_archive}' to '${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}'."
+    return 0
+}
+
+perform_update()
+{
+    echo "Performing update..."
+    chroot_environment="SYSTEM_UPDATE_DIR=${SYSTEM_UPDATE_DIR}"
+    chroot_environment="${chroot_environment} PARTITION_TABLE_FILE=${PARTITION_TABLE_FILE}"
+    chroot_environment="${chroot_environment} UPDATE_EXCLUDE_LIST_FILE=${UPDATE_EXCLUDE_LIST_FILE}"
+    chroot_environment="${chroot_environment} UPDATE_ROOTFS_SOURCE=${UPDATE_ROOTFS_SOURCE}"
+    chroot_environment="${chroot_environment} TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE}"
+
+    echo "chroot script execution environment setup with: ${chroot_environment}"
+
+    for script in "${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR}.d/"[0-9][0-9]_*.sh; do
+        script_to_execute="${script#"${TOOLBOX_MOUNT}"}"
+        echo "executing: ${script_to_execute}"
+        chroot "${TOOLBOX_MOUNT}" /bin/sh -c "${chroot_environment} ${script_to_execute}"
+    done
+
+    echo "Successfully performed update."
+
     return 0
 }
 
@@ -139,6 +189,7 @@ fi
 TOOLBOX_MOUNT="${1}"
 UPDATE_MOUNT="${2}"
 TARGET_STORAGE_DEVICE="${3}"
+
 
 if [ -z "${TOOLBOX_MOUNT}" ]; then
     echo "Error, update failed: Missing arguments <TOOLBOX_MOUNT>."
@@ -192,15 +243,19 @@ fi
 
 trap cleanup EXIT
 
-if ! extract_update_rootfs; then
-   echo "Update failed: unable to prepare update files."
+if ! prepare; then
+   echo "Update failed: unable to prepare update environment."
    exit 1
 fi
 
-# sort scripts with globbing
-# execute all scripts in chroot
-cleanup
+if ! extract_update_rootfs; then
+   echo "Update failed: unable to extract update files."
+   exit 1
+fi
 
-echo "Ok, update success."
+if ! perform_update; then
+   echo "Update failed: unable to perform update."
+   exit 1
+fi
 
 exit 0

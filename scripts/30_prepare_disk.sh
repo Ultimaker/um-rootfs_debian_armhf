@@ -42,7 +42,7 @@ is_comment()
 is_resize_needed()
 {
     current_partition_table_file="$(mktemp)"
-    sfdisk -d "${TARGET_STORAGE_DEVICE}" > "${current_partition_table_file}"
+    sfdisk -d "${TARGET_STORAGE_DEVICE}" > "${current_partition_table_file}" || return 0
     resize_needed=false
 
     while IFS="${IFS}:=," read -r table_device _ table_start _ table_size _ _ _ table_name _; do
@@ -69,7 +69,7 @@ is_resize_needed()
         done < "${current_partition_table_file}"
     done < "${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}"
 
-    unlink "${current_partition_table_file}"
+    unlink "${current_partition_table_file}" || return 1
 
     if [ "${resize_needed}" = "true" ]; then
         return 0
