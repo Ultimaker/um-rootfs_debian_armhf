@@ -11,6 +11,7 @@ set -eu
 ARM_EMU_BIN="${ARM_EMU_BIN:-}"
 
 SYSTEM_UPDATE_DIR="/etc/system_update"
+SYSTEM_EXECUTABLE_DIR="/sbin"
 SYSTEM_UPDATE_ENTRYPOINT="start_update.sh"
 PREPARE_DISK_COMMAND="${SYSTEM_UPDATE_DIR}.d/30_prepare_disk.sh"
 JEDI_PARTITION_TABLE_FILE_NAME="${SYSTEM_UPDATE_DIR}/jedi_emmc_sfdisk.table"
@@ -316,7 +317,7 @@ test_execute_rsync()
 
 test_system_update_entrypoint()
 {
-    test -x "${rootfs_dir}/sbin/${SYSTEM_UPDATE_ENTRYPOINT}" || return 1
+    test -x "${rootfs_dir}/${SYSTEM_EXECUTABLE_DIR}/${SYSTEM_UPDATE_ENTRYPOINT}" || return 1
 }
 
 test_jedi_exclude_list_exists()
