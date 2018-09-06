@@ -45,7 +45,7 @@ is_resize_needed()
     sfdisk -d "${TARGET_STORAGE_DEVICE}" > "${current_partition_table_file}"
     resize_needed=false
 
-    while IFS="${IFS}:=," read -r table_device _ table_start _ table_size _; do
+    while IFS="${IFS}:=," read -r table_device _ table_start _ table_size _ _ _ table_name _; do
         if is_comment "${table_device}" || ! is_integer "${table_start}" || \
             ! is_integer "${table_size}"; then
             continue
@@ -103,7 +103,7 @@ partitions_format()
     # with ':=,' and treat them as whitespaces, in other words, ignore them.
     sfdisk --quiet --dump "${TARGET_STORAGE_DEVICE}" | \
     while IFS="${IFS}:=," read -r disk_device _ disk_start _ disk_size _; do
-        while IFS="${IFS}:=," read -r table_device _ table_start _ table_size _; do
+        while IFS="${IFS}:=," read -r table_device _ table_start _ table_size _ _ _ table_name _; do
             if [ -z "${disk_start}" ] || [ -z "${table_start}" ] || \
                [ "${disk_start}" != "${table_start}" ]; then
                 continue
@@ -130,13 +130,13 @@ partitions_format()
                 ext4)
                     fsck_cmd="fsck.ext4 -f -y"
                     fsck_ret_ok="1"
-                    mkfs_cmd="mkfs.ext4 -F -L ${table_device} -O ^extents,^64bit"
+                    mkfs_cmd="mkfs.ext4 -F -L ${table_name} -O ^extents,^64bit"
                     resize_cmd="resize2fs"
                     ;;
                 f2fs)
                     fsck_cmd="fsck.f2fs -f -p -y"
                     fsck_ret_ok="0"
-                    mkfs_cmd="mkfs.f2fs -f -l ${table_device}"
+                    mkfs_cmd="mkfs.f2fs -f -l ${table_name}"
                     resize_cmd="resize.f2fs"
                     ;;
                 esac
@@ -153,9 +153,9 @@ partitions_format()
             else
                 echo "Formatting ${TARGET_STORAGE_DEVICE}${partition}"
                 if [ "${disk_start}" -eq "${BOOT_PARTITION_START}" ]; then
-                    mkfs_cmd="mkfs.ext4 -F -L ${table_device} -O ^extents,^64bit"
+                    mkfs_cmd="mkfs.ext4 -F -L ${table_name} -O ^extents,^64bit"
                 else
-                    mkfs_cmd="mkfs.f2fs -f -l ${table_device}"
+                    mkfs_cmd="mkfs.f2fs -f -l ${table_name}"
                 fi
 
                 eval "${mkfs_cmd}" "${TARGET_STORAGE_DEVICE}${partition}"
