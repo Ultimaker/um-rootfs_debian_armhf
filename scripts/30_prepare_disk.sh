@@ -45,19 +45,19 @@ is_resize_needed()
     sfdisk -d "${TARGET_STORAGE_DEVICE}" > "${current_partition_table_file}"
     resize_needed=false
 
-    while IFS="${IFS}:=," read -r table_label _ table_start _ table_size _; do
-        if is_comment "${table_label}" || ! is_integer "${table_start}" || \
+    while IFS="${IFS}:=," read -r table_device _ table_start _ table_size _ _ _ table_name _; do
+        if is_comment "${table_device}" || ! is_integer "${table_start}" || \
             ! is_integer "${table_size}"; then
             continue
         fi
 
-        while IFS="${IFS}:=," read -r disk_label _ disk_start _ disk_size _; do
-            if is_comment "${disk_label}" || ! is_integer "${disk_start}" || \
+        while IFS="${IFS}:=," read -r disk_device _ disk_start _ disk_size _; do
+            if is_comment "${disk_device}" || ! is_integer "${disk_start}" || \
                 ! is_integer "${disk_size}"; then
                 continue
             fi
 
-            if [ "${table_label}" != "${disk_label}" ]; then
+            if [ "${table_device}" != "${disk_device}" ]; then
                 continue
             fi
 
@@ -102,41 +102,41 @@ partitions_format()
     # Parse the output of sfdisk and temporally expand the Input Field Separator
     # with ':=,' and treat them as whitespaces, in other words, ignore them.
     sfdisk --quiet --dump "${TARGET_STORAGE_DEVICE}" | \
-    while IFS="${IFS}:=," read -r disk_label _ disk_start _ disk_size _; do
-        while IFS="${IFS}:=," read -r table_label _ table_start _ table_size _; do
+    while IFS="${IFS}:=," read -r disk_device _ disk_start _ disk_size _; do
+        while IFS="${IFS}:=," read -r table_device _ table_start _ table_size _ _ _ table_name _; do
             if [ -z "${disk_start}" ] || [ -z "${table_start}" ] || \
                [ "${disk_start}" != "${table_start}" ]; then
                 continue
             fi
 
-            if [ ! -b "${disk_label}" ]; then
-                echo "Error: '${disk_label}' is not a block device, cannot continue"
+            if [ ! -b "${disk_device}" ]; then
+                echo "Error: '${disk_device}' is not a block device, cannot continue"
                 exit 1
             fi
 
-            if grep -q "${disk_label}" /proc/mounts; then
-                umount "${disk_label}"
+            if grep -q "${disk_device}" /proc/mounts; then
+                umount "${disk_device}"
             fi
 
-            # Get the partition number from the label. e.g. /dev/loop0p1 -> p1
+            # Get the partition number from the device. e.g. /dev/loop0p1 -> p1
             # by grouping p with 1 or more digits and only printing the match,
             # with | being used as the command separator.
             # and then format the partition. If the partition was already valid,
             # just resize the existing one. If fsck or resize fails, reformat.
-            partition="$(echo "${disk_label}" | sed -rn 's|.*(p[[:digit:]]+$)|\1|p')"
+            partition="$(echo "${disk_device}" | sed -rn 's|.*(p[[:digit:]]+$)|\1|p')"
             if fstype="$(blkid -o value -s TYPE "${TARGET_STORAGE_DEVICE}${partition}")"; then
                 echo "Attempting to resize partition ${TARGET_STORAGE_DEVICE}${partition}"
                 case "${fstype}" in
                 ext4)
                     fsck_cmd="fsck.ext4 -f -y"
                     fsck_ret_ok="1"
-                    mkfs_cmd="mkfs.ext4 -F -L ${table_label}"
+                    mkfs_cmd="mkfs.ext4 -F -L ${table_name} -O ^extents,^64bit"
                     resize_cmd="resize2fs"
                     ;;
                 f2fs)
                     fsck_cmd="fsck.f2fs -f -p -y"
                     fsck_ret_ok="0"
-                    mkfs_cmd="mkfs.f2fs -f -l ${table_label}"
+                    mkfs_cmd="mkfs.f2fs -f -l ${table_name}"
                     resize_cmd="resize.f2fs"
                     ;;
                 esac
@@ -153,9 +153,9 @@ partitions_format()
             else
                 echo "Formatting ${TARGET_STORAGE_DEVICE}${partition}"
                 if [ "${disk_start}" -eq "${BOOT_PARTITION_START}" ]; then
-                    mkfs_cmd="mkfs.ext4 -F -L ${table_label}"
+                    mkfs_cmd="mkfs.ext4 -F -L ${table_name} -O ^extents,^64bit"
                 else
-                    mkfs_cmd="mkfs.f2fs -f -l ${table_label}"
+                    mkfs_cmd="mkfs.f2fs -f -l ${table_name}"
                 fi
 
                 eval "${mkfs_cmd}" "${TARGET_STORAGE_DEVICE}${partition}"
@@ -178,8 +178,8 @@ partition_resize()
 
     # Temporally expand the Input Field Separator with ':=,' and treat them
     # as whitespaces, in other words, ignore them.
-    while IFS="${IFS}:=," read -r label _ start _ size _; do
-        if [ -z "${label}" ] || is_comment "${label}" || \
+    while IFS="${IFS}:=," read -r device _ start _ size _; do
+        if [ -z "${device}" ] || is_comment "${device}" || \
            ! is_integer "${start}" || ! is_integer "${size}"; then
             continue
         fi
@@ -190,7 +190,7 @@ partition_resize()
 
         partition_end="$((start + size))"
         if [ "${partition_end}" -gt "${target_disk_end}" ]; then
-            echo "Partition '${label}' is beyond the size of the disk (${partition_end} > ${target_disk_end}), cannot continue."
+            echo "Partition '${device}' is beyond the size of the disk (${partition_end} > ${target_disk_end}), cannot continue."
             exit 1
         fi
     done < "${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}"
