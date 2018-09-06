@@ -447,10 +447,22 @@ test_execute_start_update_multiple_update_rootfs_files_nok()
     "${rootfs_dir}${START_UPDATE_COMMAND}" "${rootfs_dir}" "${update_mount}" "${LOOP_STORAGE_DEVICE}" || return 0
 }
 
-test_execute_start_update_preparation_phase_ok()
+test_execute_start_update_successful_update_ok()
 {
     cp "${TEST_UPDATE_ROOTFS_FILE}" "${update_mount}/${TEMP_TEST_UPDATE_ROOTFS_FILE}"
     "${rootfs_dir}${START_UPDATE_COMMAND}" "${rootfs_dir}" "${update_mount}" "${LOOP_STORAGE_DEVICE}" || return 1
+
+    update_target="$(mktemp -d)"
+    mount -t auto -v "${LOOP_STORAGE_DEVICE}p2" "${update_target}"
+
+    rsync --exclude-from "${UPDATE_EXCLUDE_LIST_FILE}" -c -a -x --dry-run \
+        "${rootfs_dir}${UPDATE_ROOTFS_SOURCE}/" "${update_target}/" || return 1
+
+    umount "${update_target}"
+
+    if [ -z "${update_target##*/tmp/*}" ]; then
+        rm -rf "${update_target}"
+    fi
 }
 
 test_execute_start_update_update_rootfs_mount_point_exists()
@@ -538,7 +550,7 @@ run_test test_execute_start_update_partition_table_not_found_nok
 run_test test_execute_start_update_rsync_ignore_file_not_found_nok
 run_test test_execute_start_update_update_rootfs_corrupt_nok
 run_test test_execute_start_update_multiple_update_rootfs_files_nok
-run_test test_execute_start_update_preparation_phase_ok
+run_test test_execute_start_update_successful_update_ok
 run_test test_execute_start_update_update_rootfs_mount_point_exists
 
 if [ "${result}" -ne 0 ]; then
