@@ -34,7 +34,7 @@ PARTITION_TABLE_FILE_NAME="partition_table"
 PARTITION_TABLE_FILE="${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE_NAME}"
 TMP_TEST_IMAGE_FILE="/tmp/test_file.img"
 
-UPDATE_SOURCE="/tmp/update_source"
+UPDATE_ROOTFS_SOURCE="/tmp/update_source"
 UPDATE_EXCLUDE_LIST_FILE="config/jedi_update_exclude_list.txt"
 TEST_UPDATE_ROOTFS_FILE="test/test_rootfs.tar.xz"
 TEMP_TEST_UPDATE_ROOTFS_FILE="rootfs-v1.2.3.tar.xz"
@@ -134,8 +134,8 @@ setup()
           -o "lowerdir=${overlayfs_dir}/rom,upperdir=${overlayfs_dir}/up,workdir=${overlayfs_dir}/work" \
           "${rootfs_dir}"
 
-    mkdir -p "${rootfs_dir}${UPDATE_SOURCE}"
-    tar xvfJ "${TEST_UPDATE_ROOTFS_FILE}" -C "${rootfs_dir}${UPDATE_SOURCE}" \
+    mkdir -p "${rootfs_dir}${UPDATE_ROOTFS_SOURCE}"
+    tar xvfJ "${TEST_UPDATE_ROOTFS_FILE}" -C "${rootfs_dir}${UPDATE_ROOTFS_SOURCE}" \
         > /dev/null 2> /dev/null
 
     update_mount="$(mktemp -d)"
@@ -172,8 +172,8 @@ teardown()
         unlink "${partition_table_file}"
     done
 
-    if [ -d "${rootfs_dir}${UPDATE_SOURCE}" ]; then
-        rm -rf "${rootfs_dir}${UPDATE_SOURCE}"
+    if [ -d "${rootfs_dir}${UPDATE_ROOTFS_SOURCE}" ]; then
+        rm -rf "${rootfs_dir}${UPDATE_ROOTFS_SOURCE}"
     fi
 
     if [ -d "${update_mount}" ]; then
@@ -391,25 +391,25 @@ test_execute_update_files_no_update_source_option_passed_nok()
 test_execute_update_files_with_arguments_from_environment_ok()
 {
     chroot "${rootfs_dir}" /bin/sh -c \
-        "UPDATE_SOURCE=${UPDATE_SOURCE} TARGET_STORAGE_DEVICE=${LOOP_STORAGE_DEVICE} ${UPDATE_FILES_COMMAND}" \
+        "UPDATE_ROOTFS_SOURCE=${UPDATE_ROOTFS_SOURCE} TARGET_STORAGE_DEVICE=${LOOP_STORAGE_DEVICE} ${UPDATE_FILES_COMMAND}" \
             || return 1
 }
 
 test_execute_update_files_invalid_block_device_nok()
 {
     target_device="/dev/loop100"
-    chroot "${rootfs_dir}" "${UPDATE_FILES_COMMAND}" -s "${UPDATE_SOURCE}" -d "${target_device}" || return 0
+    chroot "${rootfs_dir}" "${UPDATE_FILES_COMMAND}" -s "${UPDATE_ROOTFS_SOURCE}" -d "${target_device}" || return 0
 }
 
 test_execute_update_files_target_device_ok()
 {
-    chroot "${rootfs_dir}" "${UPDATE_FILES_COMMAND}" -s "${UPDATE_SOURCE}" -d "${LOOP_STORAGE_DEVICE}" || return 1
+    chroot "${rootfs_dir}" "${UPDATE_FILES_COMMAND}" -s "${UPDATE_ROOTFS_SOURCE}" -d "${LOOP_STORAGE_DEVICE}" || return 1
 
     update_target="$(mktemp -d)"
     mount -t auto -v "${LOOP_STORAGE_DEVICE}p2" "${update_target}" || return 1
 
     rsync --exclude-from "${UPDATE_EXCLUDE_LIST_FILE}" -c -a -x --dry-run \
-        "${rootfs_dir}${UPDATE_SOURCE}/" "${update_target}/" || return 1
+        "${rootfs_dir}${UPDATE_ROOTFS_SOURCE}/" "${update_target}/" || return 1
 
     umount "${update_target}"
 
