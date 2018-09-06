@@ -71,8 +71,9 @@ execute_prepare_disk()
     # Remove the identifiers in the header because they will always change.
     sed -i "s/label-id:.*//" "${rootfs_dir}${PARTITION_TABLE_FILE}"
     sed -i "s/label-id:.*//" "${rootfs_dir}${PARTITION_TABLE_FILE}.verify"
+
     # Remove the name from the source partition file, as the names are not stored in the partition table.
-    sed -i "s/, name=[a-z]+//" "${rootfs_dir}${PARTITION_TABLE_FILE}"
+    sed -i "s/, name=.*//" "${rootfs_dir}${PARTITION_TABLE_FILE}"
 
     diff -b "${rootfs_dir}${PARTITION_TABLE_FILE}" "${rootfs_dir}${PARTITION_TABLE_FILE}.verify" || return 1
 }
@@ -158,6 +159,11 @@ setup()
     create_dummy_storage_device
 
     sfdisk -d "${LOOP_STORAGE_DEVICE}" > "${rootfs_dir}${PARTITION_TABLE_FILE}"
+
+    # Add the partition labels to the partition file, they will be used as label
+    sed -i "s|${LOOP_STORAGE_DEVICE}p1.*|&, name=boot|" "${rootfs_dir}${PARTITION_TABLE_FILE}"
+    sed -i "s|${LOOP_STORAGE_DEVICE}p2.*|&, name=root|" "${rootfs_dir}${PARTITION_TABLE_FILE}"
+    sed -i "s|${LOOP_STORAGE_DEVICE}p3.*|&, name=user|" "${rootfs_dir}${PARTITION_TABLE_FILE}"
 }
 
 teardown()
