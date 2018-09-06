@@ -114,6 +114,11 @@ partitions_format()
                 exit 1
             fi
 
+            if [ -z "${table_name}" ]; then
+                echo "Error: partition label for ${disk_device} is empty"
+                exit 1
+            fi
+
             if grep -q "${disk_device}" /proc/mounts; then
                 umount "${disk_device}"
             fi
