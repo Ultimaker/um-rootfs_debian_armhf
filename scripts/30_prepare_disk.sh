@@ -130,7 +130,7 @@ partitions_format()
                 ext4)
                     fsck_cmd="fsck.ext4 -f -y"
                     fsck_ret_ok="1"
-                    mkfs_cmd="mkfs.ext4 -F -L ${table_device}"
+                    mkfs_cmd="mkfs.ext4 -F -L ${table_device} -O ^extents,^64bit"
                     resize_cmd="resize2fs"
                     ;;
                 f2fs)
@@ -153,7 +153,7 @@ partitions_format()
             else
                 echo "Formatting ${TARGET_STORAGE_DEVICE}${partition}"
                 if [ "${disk_start}" -eq "${BOOT_PARTITION_START}" ]; then
-                    mkfs_cmd="mkfs.ext4 -F -L ${table_device}"
+                    mkfs_cmd="mkfs.ext4 -F -L ${table_device} -O ^extents,^64bit"
                 else
                     mkfs_cmd="mkfs.f2fs -f -l ${table_device}"
                 fi
