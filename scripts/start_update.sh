@@ -232,7 +232,7 @@ if [ ! -f "${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}" ]; then
 fi
 
 if [ ! -f "${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}.sha512" ]; then
-    echo "Error, update failed: '${TOOLBOX_MOUNT}${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}' not found."
+    echo "Error, update failed: '${TOOLBOX_MOUNT}${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}.sha512' not found."
     exit 1
 fi
 
