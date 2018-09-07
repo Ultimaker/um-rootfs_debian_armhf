@@ -217,16 +217,20 @@ backup_data()
 
     sfdisk --quiet --dump "${TARGET_STORAGE_DEVICE}" | \
     while IFS="${IFS}:=," read -r disk_device _ disk_start _ disk_size _; do
-        if grep -q "${disk_device}" /proc/mounts; then
-            umount "${disk_device}"
-        fi
-        backup_file="/tmp/backup${disk_device}.tar.gz"
-        if mount "${disk_device}" "${temp_mount_dir}"; then
-            mkdir -p "$(dirname "${backup_location}")"
-            if ! tar -czf "${backup_location}" -C "${temp_mount_dir}" .; then
-                rm "${backup_location}"
+        if [ -b "${disk_device}" ]; then
+            if grep -q "${disk_device}" /proc/mounts; then
+                umount "${disk_device}"
             fi
-            umount "${disk_device}"
+            backup_file="/tmp/backup${disk_device}.tar.gz"
+            if mount "${disk_device}" "${temp_mount_dir}"; then
+                mkdir -p "$(dirname "${backup_file}")"
+                echo "Backing up ${disk_device} as ${backup_file}"
+                if ! tar -czf "${backup_file}" -C "${temp_mount_dir}" .; then
+                    echo "Backup failed, removing backup. Partition will be empty."
+                    rm "${backup_file}"
+                fi
+                umount "${disk_device}"
+            fi
         fi
     done
 
@@ -239,17 +243,20 @@ restore_data()
 
     sfdisk --quiet --dump "${TARGET_STORAGE_DEVICE}" | \
     while IFS="${IFS}:=," read -r disk_device _ disk_start _ disk_size _; do
-        if grep -q "${disk_device}" /proc/mounts; then
-            umount "${disk_device}"
-        fi
-        backup_file="/tmp/backup${disk_device}.tar.gz"
-        if [ -f "${backup_file}" ]; then
-            mount "${disk_device}" "${temp_mount_dir}"
-            # We only restore if the parition looks empty. There can be a lost+found on an empty partition, so ignore that.
-            if [ "$(ls "${temp_mount_dir}" | wc -l)" < 2; then
-                tar -xzf "${backup_location}" -C "${temp_mount_dir}" .
+        if [ -b "${disk_device}" ]; then
+            if grep -q "${disk_device}" /proc/mounts; then
+                umount "${disk_device}"
             fi
-            umount "${disk_device}"
+            backup_file="/tmp/backup${disk_device}.tar.gz"
+            if [ -f "${backup_file}" ]; then
+                mount "${disk_device}" "${temp_mount_dir}"
+                # We only restore if the parition looks empty. There can be a lost+found on an empty partition, so ignore that.
+                if [ "$(ls "${temp_mount_dir}" | wc -l)" < 2; then
+                    echo "Restoring backup ${backup_file} to ${disk_device}"
+                    tar -xzf "${backup_file}" -C "${temp_mount_dir}" .
+                fi
+                umount "${disk_device}"
+            fi
         fi
     done
 
