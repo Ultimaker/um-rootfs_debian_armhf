@@ -45,11 +45,6 @@ cleanup()
         rm -rf "${TOOLBOX_MOUNT:?}/${UPDATE_ROOTFS_SOURCE:?}"/*
     fi
 
-    if [ -f "${UPDATE_MOUNT}/${update_rootfs_archive}" ]; then
-        echo "Cleaning up, removing: '${UPDATE_MOUNT}/${update_rootfs_archive}'."
-        rm "${UPDATE_MOUNT:?}/${update_rootfs_archive:?}"
-    fi
-
     if grep -q "${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}" "/proc/mounts"; then
         echo "Cleaning up, unmount: '${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}'."
         umount "${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}"
@@ -146,7 +141,7 @@ perform_update()
     for script in "${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR}.d/"[0-9][0-9]_*.sh; do
         script_to_execute="${script#"${TOOLBOX_MOUNT}"}"
         echo "executing: ${script_to_execute}"
-        chroot "${TOOLBOX_MOUNT}" /bin/sh -c "${chroot_environment} ${script_to_execute}"
+        chroot "${TOOLBOX_MOUNT}" /bin/sh -c "${chroot_environment} ${script_to_execute}" || return 1
     done
 
     echo "Successfully performed update."
@@ -232,6 +227,11 @@ if [ ! -d "${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR}" ]; then
 fi
 
 if [ ! -f "${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}" ]; then
+    echo "Error, update failed: '${TOOLBOX_MOUNT}${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}' not found."
+    exit 1
+fi
+
+if [ ! -f "${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}.sha512" ]; then
     echo "Error, update failed: '${TOOLBOX_MOUNT}${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}' not found."
     exit 1
 fi
