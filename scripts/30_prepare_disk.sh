@@ -38,6 +38,14 @@ is_comment()
     test -z "${1%%#*}"
 }
 
+verify_partition_file()
+{
+    cwd="$(pwd)"
+    cd "${SYSTEM_UPDATE_DIR}" # change to update dir because path is hardcoded in the sha512 output.
+    sha512sum -csw "${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}.sha512" || return 1
+    cd "${cwd}"
+}
+
 # Returns 0 when resize is needed and 1 if not needed.
 is_resize_needed()
 {
@@ -171,11 +179,6 @@ partitions_format()
 
 partition_resize()
 {
-    if ! sha512sum -csw "${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}.sha512"; then
-        echo "Error processing partition table: crc error."
-        exit 1
-    fi
-
     boot_partition_available=false
 
     # sfdisk returns size in blocks, * (1024 / 512) converts to sectors
@@ -238,14 +241,23 @@ if [ -z "${PARTITION_TABLE_FILE}" ] || [ -z "${TARGET_STORAGE_DEVICE}" ]; then
     exit 1
 fi
 
-if [ ! -r "${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}" ]; then
-    echo "Unable to read partition table file '${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}', cannot continue."
+if [ ! -f "${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}" ]; then
+    echo "Partition table file '${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}' does not exist, cannot continue."
+    exit 1
+fi
+
+if [ ! -f "${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}.sha512" ]; then
+    echo "Partition table checksum file '${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}' does not exist, cannot continue."
     exit 1
 fi
 
 if [ ! -b "${TARGET_STORAGE_DEVICE}" ]; then
     echo "Error, block device '${TARGET_STORAGE_DEVICE}' does not exist."
     exit 1
+fi
+
+if ! verify_partition_file; then
+    echo "Error: partition file crc error, cannot continue."
 fi
 
 if ! is_resize_needed; then
