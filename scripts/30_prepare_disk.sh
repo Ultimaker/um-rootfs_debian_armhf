@@ -251,7 +251,7 @@ restore_data()
             if [ -f "${backup_file}" ]; then
                 mount "${disk_device}" "${temp_mount_dir}"
                 # We only restore if the parition looks empty. There can be a lost+found on an empty partition, so ignore that.
-                if [ "$(ls "${temp_mount_dir}" | wc -l)" < 2; then
+                if [ "$(ls "${temp_mount_dir}" | wc -l)" -lt 2 ]; then
                     echo "Restoring backup ${backup_file} to ${disk_device}"
                     tar -xzf "${backup_file}" -C "${temp_mount_dir}" .
                 fi
