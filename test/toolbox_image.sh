@@ -39,12 +39,13 @@ UPDATE_EXCLUDE_LIST_FILE="config/jedi_update_exclude_list.txt"
 TEST_UPDATE_ROOTFS_FILE="test/test_rootfs.tar.xz"
 TEMP_TEST_UPDATE_ROOTFS_FILE="rootfs-v1.2.3.tar.xz"
 
+TEST_OUTPUT_FILE="$(mktemp -d)/test_results.txt"
+
 overlayfs_dir=""
 rootfs_dir=""
 update_mount=""
 
 result=0
-result_overview=""
 
 is_dev_setup_mounted=false
 exit_on_failure=false
@@ -262,7 +263,6 @@ cleanup()
 
 run_test()
 {
-    newline=$'\n'
     setup
 
     echo "________________________________________________________________________________"
@@ -272,10 +272,10 @@ run_test()
     echo
     if "${1}"; then
         echo "Result - OK"
-        result_overview="${result_overview}OK    - ${1}${newline}"
+        echo "OK    - ${1}" >> "${TEST_OUTPUT_FILE}"
     else
         echo "Result - ERROR"
-        result_overview="${result_overview}ERROR - ${1}${newline}"
+        echo "ERROR - ${1}" >> "${TEST_OUTPUT_FILE}"
         result=1
         if "${exit_on_failure}"; then
             exit "${result}"
@@ -566,7 +566,7 @@ run_test test_execute_start_update_update_rootfs_mount_point_exists
 echo
 echo "Test results:"
 echo
-echo "${result_overview}"
+cat "${TEST_OUTPUT_FILE}"
 echo "________________________________________________________________________________"
 
 if [ "${result}" -ne 0 ]; then
