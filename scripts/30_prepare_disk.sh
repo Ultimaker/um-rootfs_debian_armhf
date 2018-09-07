@@ -213,22 +213,27 @@ partition_resize()
 
 backup_data()
 {
-    temp_mount_dir=$(mktemp -d)
+    temp_mount_dir="$(mktemp -d)"
 
     sfdisk --quiet --dump "${TARGET_STORAGE_DEVICE}" | \
     while IFS="${IFS}:=," read -r disk_device _ disk_start _ disk_size _; do
         if [ -b "${disk_device}" ]; then
-            if grep -q "${disk_device}" /proc/mounts; then
+
+            if grep -q "${disk_device}" "/proc/mounts"; then
                 umount "${disk_device}"
             fi
+
             backup_file="/tmp/backup${disk_device}.tar.gz"
+
             if mount "${disk_device}" "${temp_mount_dir}"; then
                 mkdir -p "$(dirname "${backup_file}")"
+
                 echo "Backing up ${disk_device} as ${backup_file}"
-                if ! tar -czf "${backup_file}" -C "${temp_mount_dir}" .; then
+                if ! tar -czf "${backup_file}" -C "${temp_mount_dir}" . > /dev/null; then
                     echo "Backup failed, removing backup. Partition will be empty."
                     rm "${backup_file}"
                 fi
+
                 umount "${disk_device}"
             fi
         fi
@@ -239,22 +244,27 @@ backup_data()
 
 restore_data()
 {
-    temp_mount_dir=$(mktemp -d)
+    temp_mount_dir="$(mktemp -d)"
 
     sfdisk --quiet --dump "${TARGET_STORAGE_DEVICE}" | \
     while IFS="${IFS}:=," read -r disk_device _ disk_start _ disk_size _; do
         if [ -b "${disk_device}" ]; then
-            if grep -q "${disk_device}" /proc/mounts; then
+
+            if grep -q "${disk_device}" "/proc/mounts"; then
                 umount "${disk_device}"
             fi
+
             backup_file="/tmp/backup${disk_device}.tar.gz"
             if [ -f "${backup_file}" ]; then
                 mount "${disk_device}" "${temp_mount_dir}"
+
                 # We only restore if the parition looks empty. There can be a lost+found on an empty partition, so ignore that.
-                if [ "$(ls "${temp_mount_dir}" | wc -l)" -lt 2 ]; then
+                if [ "$(find "${temp_mount_dir}" ! -name . -prune -print | grep -c /)" -lt 2 ]; then
                     echo "Restoring backup ${backup_file} to ${disk_device}"
-                    tar -xzf "${backup_file}" -C "${temp_mount_dir}" .
+                    tar -xzf "${backup_file}" -C "${temp_mount_dir}" . > /dev/null || \
+                        echo "Restoring backup '${backup_file}' to '${disk_device}' failed."
                 fi
+
                 umount "${disk_device}"
             fi
         fi
