@@ -71,6 +71,7 @@ run_in_docker()
         --rm \
         --privileged \
         -e "ARM_EMU_BIN=${ARM_EMU_BIN}" \
+        -e "RELEASE_VERSION=${RELEASE_VERSION:-}" \
         -v "${ARM_EMU_BIN}:${ARM_EMU_BIN}:ro" \
         -v "$(pwd):${DOCKER_WORK_DIR}" \
         -w "${work_dir}" \
