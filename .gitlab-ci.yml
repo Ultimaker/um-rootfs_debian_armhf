@@ -168,6 +168,7 @@ build:master_docker_latest:
 
 # Test package
 .test_pkg_common: &test_pkg_common
+  <<: *parameters_common
   stage: test
   dependencies:
     - build:dev_docker_candidate
