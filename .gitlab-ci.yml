@@ -32,22 +32,23 @@ stages:
 lint_test_scripts:
   <<: *shell_linting_common
   script:
-    - shellcheck -C -f tty -s sh test/*.sh
+    - shellcheck -x -C -f tty -s sh "test/"*".sh"
+    - shellcheck -x -C -f tty -s sh "test/include/"*".sh"
 
 lint_system_update_scripts:
   <<: *shell_linting_common
   script:
-    - shellcheck -C -f tty -s sh scripts/*.sh
+    - shellcheck -C -f tty -s sh "scripts/"*".sh"
 
 lint_local_build_script:
   <<: *shell_linting_common
   script:
-    - shellcheck -C -f tty -s sh build_for_ultimaker.sh
+    - shellcheck -C -f tty -s sh "build_for_ultimaker.sh"
 
 lint_package_build_script:
   <<: *shell_linting_common
   script:
-    - shellcheck -C -f tty -s sh build.sh
+    - shellcheck -C -f tty -s sh "build.sh"
 
 # Build environment
 # The 'prepare' and the 'push' stages are executed conditionally. They both include
@@ -161,7 +162,7 @@ build:master_docker_latest:
     - build:dev_docker_latest
     - build:master_docker_latest
   script:
-    - ./test/toolbox_image.sh .build_*/um-update*.xz.img
+    - ./test/toolbox_image.sh ".build_"*"/um-update"*".xz.img"
 
 # Test the package on a non-master branch in a modified Docker image.
 test:dev_docker_candidate:
