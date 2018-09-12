@@ -320,6 +320,7 @@ fi
 
 if ! verify_partition_file; then
     echo "Error: partition file crc error, cannot continue."
+    exit 1
 fi
 
 if ! is_resize_needed; then
