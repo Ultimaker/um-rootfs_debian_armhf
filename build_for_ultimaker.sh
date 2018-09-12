@@ -130,23 +130,23 @@ trap cleanup EXIT
 while getopts ":cht" options; do
     case "${options}" in
     c)
-      run_env_check="no"
-      ;;
+        run_env_check="no"
+        ;;
     h)
-      usage
-      exit 0
-      ;;
+        usage
+        exit 0
+        ;;
     t)
-      run_tests="no"
-      ;;
+        run_tests="no"
+        ;;
     :)
-      echo "Option -${OPTARG} requires an argument."
-      exit 1
-      ;;
+        echo "Option -${OPTARG} requires an argument."
+        exit 1
+        ;;
     ?)
-      echo "Invalid option: -${OPTARG}"
-      exit 1
-      ;;
+        echo "Invalid option: -${OPTARG}"
+        exit 1
+        ;;
     esac
 done
 shift "$((OPTIND - 1))"

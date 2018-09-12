@@ -85,7 +85,6 @@ create_dummy_storage_device()
 setup()
 {
     toolbox_root_dir="$(mktemp -d -t "${NAME_TEMPLATE_TOOLBOX}.XXXXXX")"
-
     setup_chroot_env "${toolbox_image}" "${toolbox_root_dir}"
 
     mkdir -p "${toolbox_root_dir}/${UPDATE_ROOTFS_SOURCE}"

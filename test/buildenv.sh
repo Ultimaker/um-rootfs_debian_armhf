@@ -90,7 +90,7 @@ check_emulation_support()
         result=1
         return
     fi
-    
+
     if ! "${ARM_EMU_BIN}" "--version" 1> /dev/null ; then
         echo "non-executable"
         echo "Unable to execute ARMv7 interpreter '${ARM_EMU_BIN}'."

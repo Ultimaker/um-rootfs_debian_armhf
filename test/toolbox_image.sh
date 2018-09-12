@@ -148,7 +148,7 @@ test_execute_resizef2fs()
 
 test_execute_mount()
 {
-   chroot "${toolbox_root_dir}" /bin/mount --version || return 1
+    chroot "${toolbox_root_dir}" /bin/mount --version || return 1
 }
 
 test_execute_rsync()
