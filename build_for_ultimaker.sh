@@ -104,9 +104,11 @@ run_tests()
 {
     if command -V docker; then
         run_in_docker "${DOCKER_WORK_DIR}" "./test/toolbox_image.sh" "${DOCKER_BUILD_DIR}/${TOOLBOX_IMAGE}"
+        run_in_docker "${DOCKER_WORK_DIR}" "./test/prepare_disk.sh" "${DOCKER_BUILD_DIR}/${TOOLBOX_IMAGE}"
         run_in_docker "${DOCKER_WORK_DIR}" "./test/update_files.sh" "${DOCKER_BUILD_DIR}/${TOOLBOX_IMAGE}"
     else
         "./test/toolbox_image.sh" "${BUILD_DIR}/${TOOLBOX_IMAGE}"
+        "./test/prepare_disk.sh" "${BUILD_DIR}/${TOOLBOX_IMAGE}"
         "./test/update_files.sh" "${BUILD_DIR}/${TOOLBOX_IMAGE}"
     fi
 }
