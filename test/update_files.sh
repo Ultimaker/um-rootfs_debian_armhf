@@ -166,7 +166,7 @@ run_test()
 
 test_missing_argument_update_rootfs_source_nok()
 {
-    chroot "${toolbox_root_dir}" "${UPDATE_FILES_COMMAND}" -s '' -d "${TARGET_STORAGE_DEVICE}" || return 0
+    eval chroot "${toolbox_root_dir}" "${UPDATE_FILES_COMMAND}" -s '' -d "${TARGET_STORAGE_DEVICE}" || return 0
 }
 
 test_update_rootfs_source_not_a_directory_nok()
@@ -174,13 +174,14 @@ test_update_rootfs_source_not_a_directory_nok()
     chroot_environment="TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE}"
     chroot_environment="${chroot_environment} UPDATE_ROOTFS_SOURCE=/tmp/not_existing_dir"
 
-    chroot "${toolbox_root_dir}" /bin/sh -c "${chroot_environment} ${UPDATE_FILES_COMMAND}" || return 0
+    eval "${chroot_environment}" chroot "${toolbox_root_dir}" /bin/sh -c "${chroot_environment} ${UPDATE_FILES_COMMAND}" || return 0
 }
 
 test_invalid_block_device_nok()
 {
     target_device="/dev/loop100"
-    chroot "${toolbox_root_dir}" "${UPDATE_FILES_COMMAND}" -s "${UPDATE_ROOTFS_SOURCE}" -d "${target_device}" || return 0
+
+    eval chroot "${toolbox_root_dir}" "${UPDATE_FILES_COMMAND}" -s "${UPDATE_ROOTFS_SOURCE}" -d "${target_device}" || return 0
 }
 
 test_no_debian_distribution_found_nok()
@@ -190,7 +191,7 @@ test_no_debian_distribution_found_nok()
 
     unlink "${toolbox_root_dir}${UPDATE_ROOTFS_SOURCE}${DEBIAN_VERSION_FILE}"
 
-    chroot "${toolbox_root_dir}" /bin/sh -c "${chroot_environment} ${UPDATE_FILES_COMMAND}" || return 0
+    eval "${chroot_environment}" chroot "${toolbox_root_dir}" "${UPDATE_FILES_COMMAND}" || return 0
 }
 
 test_no_ultimaker_software_found_nok()
@@ -200,14 +201,15 @@ test_no_ultimaker_software_found_nok()
 
     unlink "${toolbox_root_dir}${UPDATE_ROOTFS_SOURCE}${ULTIMAKER_VERSION_FILE}"
 
-    chroot "${toolbox_root_dir}" /bin/sh -c "${chroot_environment} ${UPDATE_FILES_COMMAND}" || return 0
+    eval "${chroot_environment}" chroot "${toolbox_root_dir}" "${UPDATE_FILES_COMMAND}" || return 0
 }
 
 test_update_files_ok()
 {
     chroot_environment="TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE}"
     chroot_environment="${chroot_environment} UPDATE_ROOTFS_SOURCE=${UPDATE_ROOTFS_SOURCE}"
-    chroot "${toolbox_root_dir}" /bin/sh -c "${chroot_environment} ${UPDATE_FILES_COMMAND}" || return 1
+
+    eval "${chroot_environment}" chroot "${toolbox_root_dir}" "${UPDATE_FILES_COMMAND}" || return 1
 
     update_target="$(mktemp -d -t "tmp_update_target.XXXXXX")"
     mount -t auto -v "${TARGET_STORAGE_DEVICE}p2" "${update_target}" || return 1

@@ -145,7 +145,7 @@ perform_update()
 
         script_to_execute="${script#"${TOOLBOX_MOUNT}"}"
         echo "executing: ${script_to_execute}"
-        chroot "${TOOLBOX_MOUNT}" /bin/sh -c "${chroot_environment} ${script_to_execute}" || return 1
+        eval "${chroot_environment}" chroot "${TOOLBOX_MOUNT}" "${script_to_execute}" || return 1
     done
 
     echo "Successfully performed update."

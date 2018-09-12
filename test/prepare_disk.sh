@@ -53,7 +53,7 @@ execute_prepare_disk()
     cp "${PARTITION_TABLE_FILE}" "${toolbox_root_dir}${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}"
     cp "${PARTITION_TABLE_FILE}.sha512" "${toolbox_root_dir}${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}.sha512"
 
-    chroot "${toolbox_root_dir}" /bin/sh -c "${chroot_environment} ${PREPARE_DISK_COMMAND}" || return 1
+    eval "${chroot_environment}" chroot "${toolbox_root_dir}" "${PREPARE_DISK_COMMAND}" || return 1
 
     sfdisk -d "${TARGET_STORAGE_DEVICE}" > "${PARTITION_TABLE_FILE}.verify"
 
@@ -330,25 +330,28 @@ test_corrupted_f2fs_superblocks_ok()
 test_partition_table_file_does_not_exist_nok()
 {
     chroot_environment="TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE}"
-    chroot "${toolbox_root_dir}" /bin/sh -c "${PREPARE_DISK_COMMAND}" || return 0
+
+    eval "${chroot_environment}" chroot "${toolbox_root_dir}" "${PREPARE_DISK_COMMAND}" || return 0
 }
 
 test_partition_table_file_does_not_exist_in_given_system_update_dir_nok()
 {
     chroot_environment="TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE}"
     chroot_environment="${chroot_environment} SYSTEM_UPDATE_DIR=/etc"
-    chroot "${toolbox_root_dir}" /bin/sh -c "${chroot_environment} ${PREPARE_DISK_COMMAND}" || return 0
+
+    eval "${chroot_environment}" chroot "${toolbox_root_dir}" "${PREPARE_DISK_COMMAND}" || return 0
 }
 
 test_target_storage_device_argument_not_provided_nok()
 {
-    chroot "${toolbox_root_dir}" /bin/sh -c "${PREPARE_DISK_COMMAND}" || return 0
+    eval chroot "${toolbox_root_dir}" "${PREPARE_DISK_COMMAND}" || return 0
 }
 
 test_target_storage_device_is_not_a_block_device_nok()
 {
     chroot_environment="TARGET_STORAGE_DEVICE=/dev/tty1"
-    chroot "${toolbox_root_dir}" /bin/sh -c "${chroot_environment} ${PREPARE_DISK_COMMAND}" || return 0
+
+    eval "${chroot_environment}" chroot "${toolbox_root_dir}" "${PREPARE_DISK_COMMAND}" || return 0
 }
 
 usage()
