@@ -69,19 +69,19 @@ prepare()
 
     if ! mount --bind "${temp_folder}" "${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}"; then
         echo "Error, update failed: temp source update directory: '${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}' cannot be mounted."
-        return 1
+        exit 1
     fi
 
     if ! grep -q "${TOOLBOX_MOUNT}/proc" "/proc/mounts"; then
-        mount --bind /proc "${TOOLBOX_MOUNT}/proc" || return 1
+        mount --bind /proc "${TOOLBOX_MOUNT}/proc"
     fi
 
     if ! grep -q "${TOOLBOX_MOUNT}/dev" "/proc/mounts"; then
-        mount -t devtmpfs none "${TOOLBOX_MOUNT}/dev" || return 1
+        mount -t devtmpfs none "${TOOLBOX_MOUNT}/dev"
     fi
 
     if ! grep -q "${TOOLBOX_MOUNT}/tmp" "/proc/mounts"; then
-        mount -t tmpfs none "${TOOLBOX_MOUNT}/tmp" || return 1
+        mount -t tmpfs none "${TOOLBOX_MOUNT}/tmp"
     fi
 }
 
@@ -95,12 +95,12 @@ extract_update_rootfs()
     nr_files="$(find "${UPDATE_MOUNT}" -maxdepth 1 -iname "${update_rootfs_pattern}" | wc -l)"
     if [ "${nr_files}" -eq 0 ]; then
         echo "Error, update failed: no update rootfs with the pattern '${update_rootfs_pattern}' found on '${UPDATE_MOUNT}'."
-        return 1
+        exit 1
     fi
 
     if [ "${nr_files}" -gt 1 ]; then
         echo "Error, update failed: multiple update filesystem archives found on '${UPDATE_MOUNT}'."
-        return 1
+        exit 1
     fi
 
     # shellcheck disable=SC2086
@@ -109,22 +109,21 @@ extract_update_rootfs()
     echo "Found '${update_rootfs_archive}', attempting to extract to '${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}'."
     if ! tar -tJf "${UPDATE_MOUNT}/${update_rootfs_archive}" > /dev/null 2> /dev/null; then
         echo "Error, update failed: ${UPDATE_MOUNT}/${update_rootfs_archive} is corrupt"
-        return 1
+        exit 1
     fi
 
     if [ ! -d "${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}" ]; then
         echo "Error, update failed: source update directory: '${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}' does not exist."
-        return 1
+        exit 1
     fi
 
     if ! tar xfJ "${UPDATE_MOUNT}/${update_rootfs_archive}" -C "${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}" \
             > /dev/null 2> /dev/null; then
         echo "Error: unable to extract '${UPDATE_MOUNT}/${update_rootfs_archive}' to '${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}'."
-        return 1
+        exit 1
     fi
 
     echo "Successfully extracted '${UPDATE_MOUNT}/${update_rootfs_archive}' to '${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}'."
-    return 0
 }
 
 perform_update()
@@ -145,12 +144,10 @@ perform_update()
 
         script_to_execute="${script#"${TOOLBOX_MOUNT}"}"
         echo "executing: ${script_to_execute}"
-        eval "${chroot_environment}" chroot "${TOOLBOX_MOUNT}" "${script_to_execute}" || return 1
+        eval "${chroot_environment}" chroot "${TOOLBOX_MOUNT}" "${script_to_execute}"
     done
 
     echo "Successfully performed update."
-
-    return 0
 }
 
 while getopts ":h" options; do
@@ -247,19 +244,8 @@ fi
 
 trap cleanup EXIT
 
-if ! prepare; then
-   echo "Update failed: unable to prepare update environment."
-   exit 1
-fi
-
-if ! extract_update_rootfs; then
-   echo "Update failed: unable to extract update files."
-   exit 1
-fi
-
-if ! perform_update; then
-   echo "Update failed: unable to perform update."
-   exit 1
-fi
+prepare
+extract_update_rootfs
+perform_update
 
 exit 0
