@@ -139,6 +139,10 @@ perform_update()
     echo "chroot script execution environment setup with: ${chroot_environment}"
 
     for script in "${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR}.d/"[0-9][0-9]_*.sh; do
+        if [ ! -x "${script}" ]; then
+            continue
+        fi
+
         script_to_execute="${script#"${TOOLBOX_MOUNT}"}"
         echo "executing: ${script_to_execute}"
         chroot "${TOOLBOX_MOUNT}" /bin/sh -c "${chroot_environment} ${script_to_execute}" || return 1

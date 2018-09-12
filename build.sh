@@ -92,12 +92,10 @@ add_update_scripts()
         basename="${script##*/}"
         echo "Installing ${script} on '${target_script_dir}/${basename}'."
         cp "${script}" "${target_script_dir}/${basename}"
-        chmod +x "${target_script_dir}/${basename}"
     done
 
     entrypoint_script="start_update.sh"
     cp "${local_script_dir}/${entrypoint_script}" "${target_system_executable_dir}/${entrypoint_script}"
-    chmod +x "${target_system_executable_dir}/${entrypoint_script}"
 }
 
 create_update_mount_points()
