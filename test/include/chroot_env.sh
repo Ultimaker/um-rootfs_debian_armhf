@@ -28,6 +28,7 @@ setup_chroot_env()
     # in the ro squashfs for testing purposes,
     # e.g. ARM_EMU_BIN mount point and temporary test files.
     overlayfs_dir="$(mktemp -d -t "overlayfs.XXXXXXXXXX")"
+
     mount -t "tmpfs" "none" "${overlayfs_dir}"
     mkdir "${overlayfs_dir}/rom"
     mkdir "${overlayfs_dir}/up"
@@ -75,12 +76,12 @@ teardown_chroot_env()
         umount "${target_root_dir}/proc"
     fi
 
-    mounts="${target_root_dir} ${overlayfs_dir}/rom ${overlayfs_dir}"
+    mounts="${overlayfs_dir}/rom ${overlayfs_dir}"
     for mount in ${mounts}; do
         if grep -q "${mount}" "/proc/mounts"; then
             umount "${mount}"
         fi
-        if [ -d "${mount}" ]; then
+        if [ -d "${mount}" ] && [ -z "${mount##*overlayfs_*}" ]; then
             rm -r "${mount:?}"
         fi
     done
