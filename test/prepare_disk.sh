@@ -287,6 +287,18 @@ test_execute_prepare_disk_grow_boot_invalid_start_nok()
     execute_prepare_disk || return 0
 }
 
+
+test_execute_prepare_disk_grow_beyond_disk_end_nok()
+{
+    new_userdata_size="$((STORAGE_DEVICE_END - ROOTFS_START))"
+
+    # In every line in the partition table look for a string "p3<don't care>type" and replace it with
+    # with new the new disk partition parameters defined above.
+    sed -i "s|${TARGET_STORAGE_DEVICE}p3.*type|${TARGET_STORAGE_DEVICE}p3 : start= ${USERDATA_START}, size= ${new_userdata_size}, type|" "${PARTITION_TABLE_FILE}"
+
+    execute_prepare_disk || return 0
+}
+
 usage()
 {
     echo "Usage:   ${0} [OPTIONS] <toolbox image file>"
@@ -346,6 +358,7 @@ run_test test_execute_prepare_disk_resize_not_needed_ok
 run_test test_execute_prepare_disk_grow_boot_overlapping_rootfs_nok
 run_test test_execute_prepare_disk_grow_rootfs_overlapping_userdata_nok
 run_test test_execute_prepare_disk_grow_boot_invalid_start_nok
+run_test test_execute_prepare_disk_grow_beyond_disk_end_nok
 
 echo "________________________________________________________________________________"
 echo "Test results '${TEST_OUTPUT_FILE}':"
