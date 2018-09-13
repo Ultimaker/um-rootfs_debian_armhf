@@ -16,16 +16,21 @@ ARM_EMU_BIN="${ARM_EMU_BIN:-}"
 CWD="$(pwd)"
 
 SYSTEM_UPDATE_DIR="${SYSTEM_UPDATE_DIR:-/etc/system_update}"
-#UPDATE_EXCLUDE_LIST_FILE="test_jedi_emmc_sfdisk.table"
+UPDATE_EXCLUDE_LIST_FILE="jedi_update_exclude_list.txt"
+UPDATE_ROOTFS_SOURCE="/tmp/update_source"
 TARGET_STORAGE_DEVICE=""
 
 JEDI_PARTITION_TABLE_FILE_NAME="config/jedi_emmc_sfdisk.table"
-#UPDATE_FILES_COMMAND="/etc/system_update.d/30_prepare_disk.sh"
+UPDATE_FILES_COMMAND="${SYSTEM_UPDATE_DIR}.d/50_update_files.sh"
+
+ULTIMAKER_VERSION_FILE="/etc/ultimaker_version"
+DEBIAN_VERSION_FILE="/etc/debian_version"
 
 STORAGE_DEVICE_IMG="storage_device.img"
 BYTES_PER_SECTOR="512"
 STORAGE_DEVICE_SIZE="7553024" # sectors, about 3.6 GiB
 
+TEST_UPDATE_ROOTFS_FILE="${CWD}/test/test_rootfs.tar.xz"
 TEST_OUTPUT_FILE="$(mktemp -d)/test_results_$(basename "${0%.sh}").txt"
 
 toolbox_image=""
@@ -75,6 +80,13 @@ setup()
 
     setup_chroot_env "${toolbox_image}" "${toolbox_root_dir}"
 
+    mkdir -p "${toolbox_root_dir}${UPDATE_ROOTFS_SOURCE}"
+    tar xvfJ "${TEST_UPDATE_ROOTFS_FILE}" -C "${toolbox_root_dir}${UPDATE_ROOTFS_SOURCE}" \
+        > /dev/null 2> /dev/null
+
+    echo "999.999.999_testing_version" > "${toolbox_root_dir}${UPDATE_ROOTFS_SOURCE}${ULTIMAKER_VERSION_FILE}"
+    echo "1000000_testing_version" > "${toolbox_root_dir}${UPDATE_ROOTFS_SOURCE}${DEBIAN_VERSION_FILE}"
+
     work_dir="$(mktemp -d)"
     cd "${work_dir}"
 
@@ -86,6 +98,10 @@ teardown()
     if [ -b "${TARGET_STORAGE_DEVICE}" ]; then
         losetup -d "${TARGET_STORAGE_DEVICE}"
         TARGET_STORAGE_DEVICE=""
+    fi
+
+    if [ -d "${toolbox_root_dir}${UPDATE_ROOTFS_SOURCE}" ]; then
+        rm -rf "${toolbox_root_dir:?}${UPDATE_ROOTFS_SOURCE:?}"
     fi
 
     cd "${CWD}"
@@ -145,9 +161,62 @@ run_test()
     teardown
 }
 
-test_something()
+test_missing_argument_update_rootfs_source_nok()
 {
-    echo
+    chroot "${toolbox_root_dir}" "${UPDATE_FILES_COMMAND}" -s '' -d "${TARGET_STORAGE_DEVICE}" || return 0
+}
+
+test_update_rootfs_source_not_a_directory_nok()
+{
+    chroot_environment="TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE}"
+    chroot_environment="${chroot_environment} UPDATE_ROOTFS_SOURCE=/tmp/not_existing_dir"
+
+    chroot "${toolbox_root_dir}" /bin/sh -c "${chroot_environment} ${UPDATE_FILES_COMMAND}" || return 0
+}
+
+test_invalid_block_device_nok()
+{
+    target_device="/dev/loop100"
+    chroot "${toolbox_root_dir}" "${UPDATE_FILES_COMMAND}" -s "${UPDATE_ROOTFS_SOURCE}" -d "${target_device}" || return 0
+}
+
+test_no_debian_distribution_found_nok()
+{
+    chroot_environment="TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE}"
+    chroot_environment="${chroot_environment} UPDATE_ROOTFS_SOURCE=${UPDATE_ROOTFS_SOURCE}"
+
+    unlink "${toolbox_root_dir}${UPDATE_ROOTFS_SOURCE}${DEBIAN_VERSION_FILE}"
+
+    chroot "${toolbox_root_dir}" /bin/sh -c "${chroot_environment} ${UPDATE_FILES_COMMAND}" || return 0
+}
+
+test_no_ultimaker_software_found_nok()
+{
+    chroot_environment="TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE}"
+    chroot_environment="${chroot_environment} UPDATE_ROOTFS_SOURCE=${UPDATE_ROOTFS_SOURCE}"
+
+    unlink "${toolbox_root_dir}${UPDATE_ROOTFS_SOURCE}${ULTIMAKER_VERSION_FILE}"
+
+    chroot "${toolbox_root_dir}" /bin/sh -c "${chroot_environment} ${UPDATE_FILES_COMMAND}" || return 0
+}
+
+test_update_files_ok()
+{
+    chroot_environment="TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE}"
+    chroot_environment="${chroot_environment} UPDATE_ROOTFS_SOURCE=${UPDATE_ROOTFS_SOURCE}"
+    chroot "${toolbox_root_dir}" /bin/sh -c "${chroot_environment} ${UPDATE_FILES_COMMAND}" || return 1
+
+    update_target="$(mktemp -d -t "tmp_update_target.XXXXXX")"
+    mount -t auto -v "${TARGET_STORAGE_DEVICE}p2" "${update_target}" || return 1
+
+    rsync --exclude-from "${CWD}/config/${UPDATE_EXCLUDE_LIST_FILE}" -c -a -x --dry-run \
+        "${toolbox_root_dir}${UPDATE_ROOTFS_SOURCE}/" "${update_target}/" || return 1
+
+    umount "${update_target}"
+
+    if [ -z "${update_target##*tmp_update_target*}" ]; then
+        rm -rf "${update_target}"
+    fi
 }
 
 usage()
@@ -202,7 +271,12 @@ fi
 
 trap cleanup EXIT
 
-run_test test_something
+run_test test_missing_argument_update_rootfs_source_nok
+run_test test_update_rootfs_source_not_a_directory_nok
+run_test test_invalid_block_device_nok
+run_test test_no_debian_distribution_found_nok
+run_test test_no_ultimaker_software_found_nok
+run_test test_update_files_ok
 
 echo "________________________________________________________________________________"
 echo "Test results '${TEST_OUTPUT_FILE}':"
