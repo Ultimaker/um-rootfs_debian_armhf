@@ -163,6 +163,7 @@ build:master_docker_latest:
     - build:master_docker_latest
   script:
     - ./test/toolbox_image.sh ".build_"*"/um-update"*".xz.img"
+    - ./test/update_files.sh ".build_"*"/um-update"*".xz.img"
 
 # Test the package on a non-master branch in a modified Docker image.
 test:dev_docker_candidate:
