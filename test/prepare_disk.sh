@@ -275,6 +275,18 @@ test_execute_prepare_disk_grow_rootfs_overlapping_userdata_nok()
     execute_prepare_disk || return 0
 }
 
+test_execute_prepare_disk_grow_boot_invalid_start_nok()
+{
+    new_boot_start="$(random_int "$((BOOT_START -1))")"
+    new_boot_size="$((ROOTFS_START - new_boot_start))"
+
+    # In every line in the partition table look for a string "p1<don't care>type" and replace it with
+    # with new the new disk partition parameters defined above.
+    sed -i "s|${TARGET_STORAGE_DEVICE}p1.*type|${TARGET_STORAGE_DEVICE}p1 : start= ${new_boot_start}, size= ${new_boot_size}, type|" "${PARTITION_TABLE_FILE}"
+
+    execute_prepare_disk || return 0
+}
+
 usage()
 {
     echo "Usage:   ${0} [OPTIONS] <toolbox image file>"
@@ -333,6 +345,7 @@ run_test test_execute_prepare_disk_grow_rootfs_ok
 run_test test_execute_prepare_disk_resize_not_needed_ok
 run_test test_execute_prepare_disk_grow_boot_overlapping_rootfs_nok
 run_test test_execute_prepare_disk_grow_rootfs_overlapping_userdata_nok
+run_test test_execute_prepare_disk_grow_boot_invalid_start_nok
 
 echo "________________________________________________________________________________"
 echo "Test results '${TEST_OUTPUT_FILE}':"
