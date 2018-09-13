@@ -26,7 +26,7 @@ STORAGE_DEVICE_IMG="storage_device.img"
 MIN_PARTITION_SIZE="78124"    # 40 MiB (enough for f2fs and ext4)
 BYTES_PER_SECTOR="512"
 STORAGE_DEVICE_SIZE="7553024" # sectors, about 3.6 GiB
-#BOOT_START="2048"             # offset 1 MiB
+BOOT_START="2048"             # offset 1 MiB
 ROOTFS_START="67584"          # offset 33 MiB
 USERDATA_START="1998848"      # offset 976 MiB
 
@@ -205,6 +205,23 @@ test_execute_prepare_disk_sha512_nok()
     execute_prepare_disk || return 0
 }
 
+test_execute_prepare_disk_grow_boot_ok()
+{
+    max_rootfs_size="$((USERDATA_START - ROOTFS_START))"
+    new_rootfs_size="$(random_int_within "${MIN_PARTITION_SIZE}" "${max_rootfs_size}")"
+
+    new_rootfs_start="$((USERDATA_START - new_rootfs_size))"
+    new_boot_size="$((new_rootfs_start - BOOT_START))"
+
+    # In every line in the partition table look for a string "p1<don't care>type" and replace it with
+    # with new the new disk partition parameters defined above.
+    sed -i "s|${TARGET_STORAGE_DEVICE}p1.*type|${TARGET_STORAGE_DEVICE}p1 : start= ${BOOT_START}, size= ${new_boot_size}, type|" "${PARTITION_TABLE_FILE}"
+    sed -i "s|${TARGET_STORAGE_DEVICE}p2.*type|${TARGET_STORAGE_DEVICE}p2 : start= ${new_rootfs_start}, size= ${new_rootfs_size}, type|" "${PARTITION_TABLE_FILE}"
+
+    execute_prepare_disk || return 1
+    test_disk_integrity || return 1
+}
+
 test_execute_prepare_disk_grow_rootfs_ok()
 {
     max_userdata_size="$((STORAGE_DEVICE_SIZE - USERDATA_START))"
@@ -282,6 +299,7 @@ fi
 trap cleanup EXIT
 
 run_test test_execute_prepare_disk_sha512_nok
+run_test test_execute_prepare_disk_grow_boot_ok
 run_test test_execute_prepare_disk_grow_rootfs_ok
 run_test test_execute_prepare_disk_resize_not_needed_ok
 
