@@ -328,6 +328,30 @@ test_execute_prepare_disk_with_corrupted_f2fs_superblocks_ok()
     test_execute_prepare_disk_grow_rootfs_ok || return 1
 }
 
+test_execute_prepare_disk_partition_table_file_does_not_exist_nok()
+{
+    chroot_environment="TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE}"
+    chroot "${toolbox_root_dir}" /bin/sh -c "${PREPARE_DISK_COMMAND}" || return 0
+}
+
+test_execute_prepare_disk_partition_table_file_does_not_exist_in_given_system_update_dir_nok()
+{
+    chroot_environment="TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE}"
+    chroot_environment="${chroot_environment} SYSTEM_UPDATE_DIR=/etc"
+    chroot "${toolbox_root_dir}" /bin/sh -c "${chroot_environment} ${PREPARE_DISK_COMMAND}" || return 0
+}
+
+test_execute_prepare_disk_target_storage_device_argument_not_provided_nok()
+{
+    chroot "${toolbox_root_dir}" /bin/sh -c "${PREPARE_DISK_COMMAND}" || return 0
+}
+
+test_execute_prepare_disk_target_storage_device_is_not_a_block_device_nok()
+{
+    chroot_environment="TARGET_STORAGE_DEVICE=/dev/tty1"
+    chroot "${toolbox_root_dir}" /bin/sh -c "${chroot_environment} ${PREPARE_DISK_COMMAND}" || return 0
+}
+
 usage()
 {
     echo "Usage:   ${0} [OPTIONS] <toolbox image file>"
@@ -391,6 +415,11 @@ run_test test_execute_prepare_disk_grow_beyond_disk_end_nok
 run_test test_execute_prepare_disk_with_corrupted_ext4_primary_superblock_ok
 run_test test_execute_prepare_disk_with_corrupted_f2fs_primary_superblock_ok
 run_test test_execute_prepare_disk_with_corrupted_f2fs_superblocks_ok
+run_test test_execute_prepare_disk_partition_table_file_does_not_exist_nok
+run_test test_execute_prepare_disk_partition_table_file_does_not_exist_in_given_system_update_dir_nok
+run_test test_execute_prepare_disk_target_storage_device_is_not_a_block_device_nok
+run_test test_execute_prepare_disk_target_storage_device_argument_not_provided_nok
+
 
 echo "________________________________________________________________________________"
 echo "Test results '${TEST_OUTPUT_FILE}':"
