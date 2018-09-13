@@ -299,6 +299,35 @@ test_execute_prepare_disk_grow_beyond_disk_end_nok()
     execute_prepare_disk || return 0
 }
 
+test_execute_prepare_disk_with_corrupted_ext4_primary_superblock_ok()
+{
+    checksum_size="4"
+    block_size="1024"
+    primary_superblock_start="1"
+    write_start_offset="$((primary_superblock_start * block_size + checksum_size))"
+    dd if=/dev/zero of="${TARGET_STORAGE_DEVICE}p1" bs=1 count=10 seek="${write_start_offset}"
+
+    test_execute_prepare_disk_grow_boot_ok || return 1
+}
+
+test_execute_prepare_disk_with_corrupted_f2fs_primary_superblock_ok()
+{
+    # f2fs superblock are located in the beginning of the filesystem, destroy primary
+    f2fs_superblock_size="$((BYTES_PER_SECTOR * 10))"
+    dd if=/dev/urandom of="${TARGET_STORAGE_DEVICE}p2" bs=1 count="$((f2fs_superblock_size / 2))"
+
+    test_execute_prepare_disk_grow_rootfs_ok || return 1
+}
+
+test_execute_prepare_disk_with_corrupted_f2fs_superblocks_ok()
+{
+    # f2fs superblock are located in the beginning of the filesystem, destroy the primary and secondary
+    f2fs_superblock_size="$((BYTES_PER_SECTOR * 10))"
+    dd if=/dev/urandom of="${TARGET_STORAGE_DEVICE}p3" bs=1 count="$((f2fs_superblock_size + 1024))"
+
+    test_execute_prepare_disk_grow_rootfs_ok || return 1
+}
+
 usage()
 {
     echo "Usage:   ${0} [OPTIONS] <toolbox image file>"
@@ -359,6 +388,9 @@ run_test test_execute_prepare_disk_grow_boot_overlapping_rootfs_nok
 run_test test_execute_prepare_disk_grow_rootfs_overlapping_userdata_nok
 run_test test_execute_prepare_disk_grow_boot_invalid_start_nok
 run_test test_execute_prepare_disk_grow_beyond_disk_end_nok
+run_test test_execute_prepare_disk_with_corrupted_ext4_primary_superblock_ok
+run_test test_execute_prepare_disk_with_corrupted_f2fs_primary_superblock_ok
+run_test test_execute_prepare_disk_with_corrupted_f2fs_superblocks_ok
 
 echo "________________________________________________________________________________"
 echo "Test results '${TEST_OUTPUT_FILE}':"
