@@ -23,8 +23,12 @@ JEDI_PARTITION_TABLE_FILE_NAME="config/jedi_emmc_sfdisk.table"
 PREPARE_DISK_COMMAND="/etc/system_update.d/30_prepare_disk.sh"
 
 STORAGE_DEVICE_IMG="storage_device.img"
+MIN_PARTITION_SIZE="78124"    # 40 MiB (enough for f2fs and ext4)
 BYTES_PER_SECTOR="512"
 STORAGE_DEVICE_SIZE="7553024" # sectors, about 3.6 GiB
+#BOOT_START="2048"             # offset 1 MiB
+ROOTFS_START="67584"          # offset 33 MiB
+USERDATA_START="1998848"      # offset 976 MiB
 
 TEST_OUTPUT_FILE="$(mktemp -d)/test_results_$(basename "${0%.sh}").txt"
 
@@ -184,11 +188,46 @@ run_test()
     teardown
 }
 
-
-test_something_ok()
+random_int_within()
 {
-    execute_prepare_disk
+    shuf -n 1 -i "${1}"-"${2}"
 }
+
+random_int()
+{
+    random_int_within "0" "${1}"
+}
+
+test_execute_prepare_disk_sha512_nok()
+{
+    sha512sum "${PARTITION_TABLE_FILE}" > "${PARTITION_TABLE_FILE}.sha512"
+    echo "corrupted partition table data" >> "${PARTITION_TABLE_FILE}"
+    execute_prepare_disk || return 0
+}
+
+test_execute_prepare_disk_grow_rootfs_ok()
+{
+    max_userdata_size="$((STORAGE_DEVICE_SIZE - USERDATA_START))"
+    new_userdata_size="$(random_int_within "${MIN_PARTITION_SIZE}" "${max_userdata_size}")"
+
+    new_userdata_start="$((STORAGE_DEVICE_SIZE - new_userdata_size))"
+    new_rootfs_size="$((new_userdata_start - ROOTFS_START))"
+
+    # In every line in the partition table look for a string "p3<don't care>type" and replace it with
+    # with new the new disk partition parameters defined above.
+    sed -i "s|${TARGET_STORAGE_DEVICE}p2.*type|${TARGET_STORAGE_DEVICE}p2 : start= ${ROOTFS_START}, size= ${new_rootfs_size}, type|" "${PARTITION_TABLE_FILE}"
+    sed -i "s|${TARGET_STORAGE_DEVICE}p3.*type|${TARGET_STORAGE_DEVICE}p3 : start= ${new_userdata_start}, size= ${new_userdata_size}, type|" "${PARTITION_TABLE_FILE}"
+
+    execute_prepare_disk || return 1
+    test_disk_integrity || return 1
+}
+
+test_execute_prepare_disk_resize_not_needed_ok()
+{
+    execute_prepare_disk || return 1
+    test_disk_integrity || return 1
+}
+
 
 usage()
 {
@@ -242,7 +281,9 @@ fi
 
 trap cleanup EXIT
 
-run_test test_something_ok
+run_test test_execute_prepare_disk_sha512_nok
+run_test test_execute_prepare_disk_grow_rootfs_ok
+run_test test_execute_prepare_disk_resize_not_needed_ok
 
 echo "________________________________________________________________________________"
 echo "Test results '${TEST_OUTPUT_FILE}':"
