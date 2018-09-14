@@ -24,10 +24,14 @@ UPDATE_ROOTFS_SOURCE="/tmp/update_source"
 TARGET_STORAGE_DEVICE=""
 
 JEDI_PARTITION_TABLE_FILE_NAME="config/jedi_emmc_sfdisk.table"
+UPDATE_EXCLUDE_LIST_FILE="config/jedi_update_exclude_list.txt"
 
 STORAGE_DEVICE_IMG="storage_device.img"
 BYTES_PER_SECTOR="512"
 STORAGE_DEVICE_SIZE="7553024" # sectors, about 3.6 GiB
+
+TEST_UPDATE_ROOTFS_FILE="test/test_rootfs.tar.xz"
+TEMP_TEST_UPDATE_ROOTFS_FILE="rootfs-v1.2.3.tar.xz"
 
 TEST_UPDATE_ROOTFS_FILE="${CWD}/test/test_rootfs.tar.xz"
 TEST_OUTPUT_FILE="$(mktemp -d)/test_results_$(basename "${0%.sh}").txt"
@@ -173,9 +177,51 @@ run_test()
     teardown
 }
 
-test_something()
+test_rsync_ignore_file_not_found_nok()
 {
-    echo
+    cp "${TEST_UPDATE_ROOTFS_FILE}" "${update_mount}/${TEMP_TEST_UPDATE_ROOTFS_FILE}"
+    rm "${toolbox_root_dir:?}/${SYSTEM_UPDATE_DIR:?}/"*_exclude_list.txt
+    "${toolbox_root_dir}/${START_UPDATE_COMMAND}" "${toolbox_root_dir}" "${update_mount}" "${TARGET_STORAGE_DEVICE}" || return 0
+}
+
+test_partition_table_not_found_nok()
+{
+    cp "${TEST_UPDATE_ROOTFS_FILE}" "${update_mount}/${TEMP_TEST_UPDATE_ROOTFS_FILE}"
+    rm "${toolbox_root_dir:?}/${SYSTEM_UPDATE_DIR:?}/"*.table
+    "${toolbox_root_dir}/${START_UPDATE_COMMAND}" "${toolbox_root_dir}" "${update_mount}" "${TARGET_STORAGE_DEVICE}" || return 0
+}
+
+test_update_rootfs_corrupt_nok()
+{
+    cp "${TEST_UPDATE_ROOTFS_FILE}" "${update_mount}/${TEMP_TEST_UPDATE_ROOTFS_FILE}"
+    echo "Append this data to corrupt the archive" >> "${update_mount}/${TEMP_TEST_UPDATE_ROOTFS_FILE}"
+    "${toolbox_root_dir}/${START_UPDATE_COMMAND}" "${toolbox_root_dir}" "${update_mount}" "${TARGET_STORAGE_DEVICE}" || return 0
+}
+
+test_multiple_update_rootfs_files_nok()
+{
+    cp "${TEST_UPDATE_ROOTFS_FILE}" "${update_mount}/${TEMP_TEST_UPDATE_ROOTFS_FILE}"
+    cp "${update_mount}/${TEMP_TEST_UPDATE_ROOTFS_FILE}" \
+        "${update_mount}/rootfs-v2.1.0.tar.xz"
+    "${toolbox_root_dir}/${START_UPDATE_COMMAND}" "${toolbox_root_dir}" "${update_mount}" "${TARGET_STORAGE_DEVICE}" || return 0
+}
+
+test_successful_update_ok()
+{
+    cp "${TEST_UPDATE_ROOTFS_FILE}" "${update_mount}/${TEMP_TEST_UPDATE_ROOTFS_FILE}"
+    "${toolbox_root_dir}/${START_UPDATE_COMMAND}" "${toolbox_root_dir}" "${update_mount}" "${TARGET_STORAGE_DEVICE}" || return 1
+
+    update_target="$(mktemp -d)"
+    mount -t auto -v "${TARGET_STORAGE_DEVICE}p2" "${update_target}"
+
+    rsync --exclude-from "${CWD}/${UPDATE_EXCLUDE_LIST_FILE}" -c -a -x --dry-run \
+        "${toolbox_root_dir}/${UPDATE_ROOTFS_SOURCE}/" "${update_target}/" || return 1
+
+    umount "${update_target}"
+
+    if [ -z "${update_target##*/tmp/*}" ]; then
+        rm -rf "${update_target}"
+    fi
 }
 
 usage()
@@ -230,7 +276,11 @@ fi
 
 trap cleanup EXIT
 
-run_test test_something
+run_test test_partition_table_not_found_nok
+run_test test_rsync_ignore_file_not_found_nok
+run_test test_update_rootfs_corrupt_nok
+run_test test_multiple_update_rootfs_files_nok
+run_test test_successful_update_ok
 
 echo "________________________________________________________________________________"
 echo "Test results '${TEST_OUTPUT_FILE}':"
