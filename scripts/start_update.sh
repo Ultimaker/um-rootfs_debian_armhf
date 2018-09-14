@@ -67,8 +67,8 @@ prepare()
 
     temp_folder="$(mktemp -d)"
 
-    if ! mount --bind "${temp_folder}" "${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}"; then
-        echo "Error, update failed: temp source update directory: '${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}' cannot be mounted."
+    if ! mount --bind "${temp_folder}" "${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}"; then
+        echo "Error, update failed: temp source update directory: '${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}' cannot be mounted."
         return 1
     fi
 
@@ -112,18 +112,18 @@ extract_update_rootfs()
         return 1
     fi
 
-    if [ ! -d "${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}" ]; then
-        echo "Error, update failed: source update directory: '${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}' does not exist."
+    if [ ! -d "${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}" ]; then
+        echo "Error, update failed: source update directory: '${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}' does not exist."
         return 1
     fi
 
-    if ! tar xfJ "${UPDATE_MOUNT}/${update_rootfs_archive}" -C "${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}" \
+    if ! tar xfJ "${UPDATE_MOUNT}/${update_rootfs_archive}" -C "${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}" \
             > /dev/null 2> /dev/null; then
-        echo "Error: unable to extract '${UPDATE_MOUNT}/${update_rootfs_archive}' to '${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}'."
+        echo "Error: unable to extract '${UPDATE_MOUNT}/${update_rootfs_archive}' to '${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}'."
         return 1
     fi
 
-    echo "Successfully extracted '${UPDATE_MOUNT}/${update_rootfs_archive}' to '${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}'."
+    echo "Successfully extracted '${UPDATE_MOUNT}/${update_rootfs_archive}' to '${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}'."
     return 0
 }
 
@@ -221,23 +221,23 @@ if [ -z "${SYSTEM_UPDATE_DIR}" ]; then
     exit 1
 fi
 
-if [ ! -d "${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR}" ]; then
-    echo "Error, update failed: ${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR} is not a directory."
+if [ ! -d "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_DIR}" ]; then
+    echo "Error, update failed: ${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_DIR} is not a directory."
     exit 1
 fi
 
-if [ ! -f "${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}" ]; then
-    echo "Error, update failed: '${TOOLBOX_MOUNT}${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}' not found."
+if [ ! -f "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}" ]; then
+    echo "Error, update failed: '${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}' not found."
     exit 1
 fi
 
-if [ ! -f "${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}.sha512" ]; then
-    echo "Error, update failed: '${TOOLBOX_MOUNT}${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}.sha512' not found."
+if [ ! -f "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}.sha512" ]; then
+    echo "Error, update failed: '${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}.sha512' not found."
     exit 1
 fi
 
-if [ ! -f "${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR}/${UPDATE_EXCLUDE_LIST_FILE}" ]; then
-    echo "Error, update failed: '${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR}/${UPDATE_EXCLUDE_LIST_FILE}' not found."
+if [ ! -f "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_DIR}/${UPDATE_EXCLUDE_LIST_FILE}" ]; then
+    echo "Error, update failed: '${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_DIR}/${UPDATE_EXCLUDE_LIST_FILE}' not found."
     exit 1
 fi
 
