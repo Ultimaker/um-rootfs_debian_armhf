@@ -198,14 +198,14 @@ random_int()
     random_int_within "0" "${1}"
 }
 
-test_execute_prepare_disk_sha512_nok()
+test_sha512_nok()
 {
     sha512sum "${PARTITION_TABLE_FILE}" > "${PARTITION_TABLE_FILE}.sha512"
     echo "corrupted partition table data" >> "${PARTITION_TABLE_FILE}"
     execute_prepare_disk || return 0
 }
 
-test_execute_prepare_disk_grow_boot_ok()
+test_grow_boot_ok()
 {
     max_rootfs_size="$((USERDATA_START - ROOTFS_START))"
     new_rootfs_size="$(random_int_within "${MIN_PARTITION_SIZE}" "${max_rootfs_size}")"
@@ -222,7 +222,7 @@ test_execute_prepare_disk_grow_boot_ok()
     test_disk_integrity || return 1
 }
 
-test_execute_prepare_disk_grow_rootfs_ok()
+test_grow_rootfs_ok()
 {
     max_userdata_size="$((STORAGE_DEVICE_SIZE - USERDATA_START))"
     new_userdata_size="$(random_int_within "${MIN_PARTITION_SIZE}" "${max_userdata_size}")"
@@ -239,13 +239,13 @@ test_execute_prepare_disk_grow_rootfs_ok()
     test_disk_integrity || return 1
 }
 
-test_execute_prepare_disk_resize_not_needed_ok()
+test_resize_not_needed_ok()
 {
     execute_prepare_disk || return 1
     test_disk_integrity || return 1
 }
 
-test_execute_prepare_disk_grow_boot_overlapping_rootfs_nok()
+test_grow_boot_overlapping_rootfs_nok()
 {
     # Get a size between the current size and current + rootfs size
     rootfs_size="$((USERDATA_START - ROOTFS_START))"
@@ -260,7 +260,7 @@ test_execute_prepare_disk_grow_boot_overlapping_rootfs_nok()
     execute_prepare_disk || return 0
 }
 
-test_execute_prepare_disk_grow_rootfs_overlapping_userdata_nok()
+test_grow_rootfs_overlapping_userdata_nok()
 {
     # Get a size between the current size and current + userdata size
     userdata_size="$((STORAGE_DEVICE_SIZE - USERDATA_START))"
@@ -275,7 +275,7 @@ test_execute_prepare_disk_grow_rootfs_overlapping_userdata_nok()
     execute_prepare_disk || return 0
 }
 
-test_execute_prepare_disk_grow_boot_invalid_start_nok()
+test_grow_boot_invalid_start_nok()
 {
     new_boot_start="$(random_int "$((BOOT_START -1))")"
     new_boot_size="$((ROOTFS_START - new_boot_start))"
@@ -288,7 +288,7 @@ test_execute_prepare_disk_grow_boot_invalid_start_nok()
 }
 
 
-test_execute_prepare_disk_grow_beyond_disk_end_nok()
+test_grow_beyond_disk_end_nok()
 {
     new_userdata_size="$((STORAGE_DEVICE_END - ROOTFS_START))"
 
@@ -299,7 +299,7 @@ test_execute_prepare_disk_grow_beyond_disk_end_nok()
     execute_prepare_disk || return 0
 }
 
-test_execute_prepare_disk_with_corrupted_ext4_primary_superblock_ok()
+test_corrupted_ext4_primary_superblock_ok()
 {
     checksum_size="4"
     block_size="1024"
@@ -307,46 +307,46 @@ test_execute_prepare_disk_with_corrupted_ext4_primary_superblock_ok()
     write_start_offset="$((primary_superblock_start * block_size + checksum_size))"
     dd if=/dev/zero of="${TARGET_STORAGE_DEVICE}p1" bs=1 count=10 seek="${write_start_offset}"
 
-    test_execute_prepare_disk_grow_boot_ok || return 1
+    test_grow_boot_ok || return 1
 }
 
-test_execute_prepare_disk_with_corrupted_f2fs_primary_superblock_ok()
+test_corrupted_f2fs_primary_superblock_ok()
 {
     # f2fs superblock are located in the beginning of the filesystem, destroy primary
     f2fs_superblock_size="$((BYTES_PER_SECTOR * 10))"
     dd if=/dev/urandom of="${TARGET_STORAGE_DEVICE}p2" bs=1 count="$((f2fs_superblock_size / 2))"
 
-    test_execute_prepare_disk_grow_rootfs_ok || return 1
+    test_grow_rootfs_ok || return 1
 }
 
-test_execute_prepare_disk_with_corrupted_f2fs_superblocks_ok()
+test_corrupted_f2fs_superblocks_ok()
 {
     # f2fs superblock are located in the beginning of the filesystem, destroy the primary and secondary
     f2fs_superblock_size="$((BYTES_PER_SECTOR * 10))"
     dd if=/dev/urandom of="${TARGET_STORAGE_DEVICE}p3" bs=1 count="$((f2fs_superblock_size + 1024))"
 
-    test_execute_prepare_disk_grow_rootfs_ok || return 1
+    test_grow_rootfs_ok || return 1
 }
 
-test_execute_prepare_disk_partition_table_file_does_not_exist_nok()
+test_partition_table_file_does_not_exist_nok()
 {
     chroot_environment="TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE}"
     chroot "${toolbox_root_dir}" /bin/sh -c "${PREPARE_DISK_COMMAND}" || return 0
 }
 
-test_execute_prepare_disk_partition_table_file_does_not_exist_in_given_system_update_dir_nok()
+test_partition_table_file_does_not_exist_in_given_system_update_dir_nok()
 {
     chroot_environment="TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE}"
     chroot_environment="${chroot_environment} SYSTEM_UPDATE_DIR=/etc"
     chroot "${toolbox_root_dir}" /bin/sh -c "${chroot_environment} ${PREPARE_DISK_COMMAND}" || return 0
 }
 
-test_execute_prepare_disk_target_storage_device_argument_not_provided_nok()
+test_target_storage_device_argument_not_provided_nok()
 {
     chroot "${toolbox_root_dir}" /bin/sh -c "${PREPARE_DISK_COMMAND}" || return 0
 }
 
-test_execute_prepare_disk_target_storage_device_is_not_a_block_device_nok()
+test_target_storage_device_is_not_a_block_device_nok()
 {
     chroot_environment="TARGET_STORAGE_DEVICE=/dev/tty1"
     chroot "${toolbox_root_dir}" /bin/sh -c "${chroot_environment} ${PREPARE_DISK_COMMAND}" || return 0
@@ -404,21 +404,21 @@ fi
 
 trap cleanup EXIT
 
-run_test test_execute_prepare_disk_sha512_nok
-run_test test_execute_prepare_disk_grow_boot_ok
-run_test test_execute_prepare_disk_grow_rootfs_ok
-run_test test_execute_prepare_disk_resize_not_needed_ok
-run_test test_execute_prepare_disk_grow_boot_overlapping_rootfs_nok
-run_test test_execute_prepare_disk_grow_rootfs_overlapping_userdata_nok
-run_test test_execute_prepare_disk_grow_boot_invalid_start_nok
-run_test test_execute_prepare_disk_grow_beyond_disk_end_nok
-run_test test_execute_prepare_disk_with_corrupted_ext4_primary_superblock_ok
-run_test test_execute_prepare_disk_with_corrupted_f2fs_primary_superblock_ok
-run_test test_execute_prepare_disk_with_corrupted_f2fs_superblocks_ok
-run_test test_execute_prepare_disk_partition_table_file_does_not_exist_nok
-run_test test_execute_prepare_disk_partition_table_file_does_not_exist_in_given_system_update_dir_nok
-run_test test_execute_prepare_disk_target_storage_device_is_not_a_block_device_nok
-run_test test_execute_prepare_disk_target_storage_device_argument_not_provided_nok
+run_test test_sha512_nok
+run_test test_grow_boot_ok
+run_test test_grow_rootfs_ok
+run_test test_resize_not_needed_ok
+run_test test_grow_boot_overlapping_rootfs_nok
+run_test test_grow_rootfs_overlapping_userdata_nok
+run_test test_grow_boot_invalid_start_nok
+run_test test_grow_beyond_disk_end_nok
+run_test test_corrupted_ext4_primary_superblock_ok
+run_test test_corrupted_f2fs_primary_superblock_ok
+run_test test_corrupted_f2fs_superblocks_ok
+run_test test_partition_table_file_does_not_exist_nok
+run_test test_partition_table_file_does_not_exist_in_given_system_update_dir_nok
+run_test test_target_storage_device_is_not_a_block_device_nok
+run_test test_target_storage_device_argument_not_provided_nok
 
 
 echo "________________________________________________________________________________"
