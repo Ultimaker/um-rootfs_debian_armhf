@@ -8,6 +8,8 @@
 
 ARM_EMU_BIN="${ARM_EMU_BIN:-}"
 
+NAME_TEMPLATE_OVERLAYFS="overlayfs"
+
 overlayfs_dir=""
 is_dev_setup_mounted=false
 
@@ -27,7 +29,7 @@ setup_chroot_env()
     # overlayfs is required because we need to write data
     # in the ro squashfs for testing purposes,
     # e.g. ARM_EMU_BIN mount point and temporary test files.
-    overlayfs_dir="$(mktemp -d -t "overlayfs.XXXXXXXXXX")"
+    overlayfs_dir="$(mktemp -d -t "${NAME_TEMPLATE_OVERLAYFS}.XXXXXXXX")"
 
     mount -t "tmpfs" "none" "${overlayfs_dir}"
     mkdir "${overlayfs_dir}/rom"
@@ -76,13 +78,13 @@ teardown_chroot_env()
         umount "${target_root_dir}/proc"
     fi
 
-    mounts="${overlayfs_dir}/rom ${overlayfs_dir}"
+    mounts="${overlayfs_dir}/rom ${overlayfs_dir} ${target_root_dir}"
     for mount in ${mounts}; do
         if grep -q "${mount}" "/proc/mounts"; then
             umount "${mount}"
         fi
-        if [ -d "${mount}" ] && [ -z "${mount##*overlayfs_*}" ]; then
-            rm -r "${mount:?}"
+        if [ -d "${mount}" ] && [ -z "${mount##*${NAME_TEMPLATE_OVERLAYFS}*}" ]; then
+            rm -r "${mount}"
         fi
     done
 

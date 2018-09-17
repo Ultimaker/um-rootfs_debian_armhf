@@ -33,6 +33,9 @@ STORAGE_DEVICE_SIZE="7553024" # sectors, about 3.6 GiB
 TEST_UPDATE_ROOTFS_FILE="${CWD}/test/test_rootfs.tar.xz"
 TEST_OUTPUT_FILE="$(mktemp -d)/test_results_$(basename "${0%.sh}").txt"
 
+NAME_TEMPLATE_TOOLBOX="um-update-toolbox"
+NAME_TEMPLATE_WORKDIR="update_files_workdir"
+
 toolbox_image=""
 toolbox_root_dir=""
 work_dir=""
@@ -76,7 +79,7 @@ create_dummy_storage_device()
 
 setup()
 {
-    toolbox_root_dir="$(mktemp -d)"
+    toolbox_root_dir="$(mktemp -d -t "${NAME_TEMPLATE_WORKDIR}.XXXXXX")"
 
     setup_chroot_env "${toolbox_image}" "${toolbox_root_dir}"
 
@@ -87,7 +90,7 @@ setup()
     echo "999.999.999_testing_version" > "${toolbox_root_dir}${UPDATE_ROOTFS_SOURCE}${ULTIMAKER_VERSION_FILE}"
     echo "1000000_testing_version" > "${toolbox_root_dir}${UPDATE_ROOTFS_SOURCE}${DEBIAN_VERSION_FILE}"
 
-    work_dir="$(mktemp -d)"
+    work_dir="$(mktemp -d -t "${NAME_TEMPLATE_TOOLBOX}.XXXXXX")"
     cd "${work_dir}"
 
     create_dummy_storage_device
@@ -100,14 +103,20 @@ teardown()
         TARGET_STORAGE_DEVICE=""
     fi
 
-    if [ -d "${toolbox_root_dir}${UPDATE_ROOTFS_SOURCE}" ]; then
-        rm -rf "${toolbox_root_dir:?}${UPDATE_ROOTFS_SOURCE:?}"
+    if [ -d "${toolbox_root_dir}${UPDATE_ROOTFS_SOURCE}" ] && [ -z "${toolbox_root_dir##*um-update-toolbox*}" ]; then
+        rm -rf "${toolbox_root_dir}${UPDATE_ROOTFS_SOURCE}"
     fi
 
     cd "${CWD}"
 
-    if [ -d "${work_dir}" ]; then
-        rm -r "${work_dir:?}"
+    if [ -d "${work_dir}" ] && [ -z "${work_dir##*update_files_workdir*}" ]; then
+        rm -r "${work_dir}"
+    fi
+
+    teardown_chroot_env "${toolbox_root_dir}"
+
+    if [ -d "${toolbox_root_dir}" ] && [ -z "${toolbox_root_dir##*um-update-toolbox*}" ]; then
+        rm -r "${toolbox_root_dir}"
     fi
 
     teardown_chroot_env "${toolbox_root_dir}"
