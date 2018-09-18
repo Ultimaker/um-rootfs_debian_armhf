@@ -29,7 +29,7 @@ setup_chroot_env()
     # overlayfs is required because we need to write data
     # in the ro squashfs for testing purposes,
     # e.g. ARM_EMU_BIN mount point and temporary test files.
-    overlayfs_dir="$(mktemp -d -t "${NAME_TEMPLATE_OVERLAYFS}.XXXXXXXX")"
+    overlayfs_dir="$(mktemp -d -t "${NAME_TEMPLATE_OVERLAYFS}.XXXXXX")"
 
     mount -t "tmpfs" "none" "${overlayfs_dir}"
     mkdir "${overlayfs_dir}/rom"
