@@ -19,7 +19,7 @@ UPDATE_TARGET="/tmp/target_root"
 usage()
 {
     echo "Usage: ${0} [OPTIONS]"
-    echo "Synchronize the files from 'UPDATE_SOURCE' to 'TARGET_STORAGE_DEVICE'"
+    echo "Synchronize the files from 'UPDATE_ROOTFS_SOURCE' to 'TARGET_STORAGE_DEVICE'"
     echo "second partition, while taking into account a set of exclude files"
     echo "and directories from the 'exclude list file'."
     echo "  -d <TARGET_STORAGE_DEVICE>, the target storage device for the update"
@@ -82,14 +82,31 @@ if [ -z "${UPDATE_ROOTFS_SOURCE}" ] || [ -z "${TARGET_STORAGE_DEVICE}" ]; then
 fi
 
 if [ ! -d "${UPDATE_ROOTFS_SOURCE}" ]; then
-    echo "Update failed: ${UPDATE_ROOTFS_SOURCE} does not exist."
+    echo "Update failed: '${UPDATE_ROOTFS_SOURCE}' does not exist."
+    exit 1
+fi
+
+if ! cat "${UPDATE_ROOTFS_SOURCE}/etc/debian_version" 2> /dev/null; then
+    echo "Update failed: no Debian distribution found."
+    exit 1
+fi
+
+if ! cat "${UPDATE_ROOTFS_SOURCE}/etc/ultimaker_version" 2> /dev/null; then
+    echo "Update failed: no Ultimaker software found."
     exit 1
 fi
 
 if [ ! -b "${TARGET_STORAGE_DEVICE}" ]; then
-    echo "Update failed: ${TARGET_STORAGE_DEVICE} is not a valid block device."
+    echo "Update failed: '${TARGET_STORAGE_DEVICE}' is not a valid block device."
     exit 1
 fi
+
+if [ ! -f "${SYSTEM_UPDATE_DIR}/${UPDATE_EXCLUDE_LIST_FILE}" ]; then
+    echo "Update failed: file '${SYSTEM_UPDATE_DIR}/${UPDATE_EXCLUDE_LIST_FILE}' not found."
+    exit 1
+fi
+
+echo "Updating to Ultimaker version: $(cat "${UPDATE_ROOTFS_SOURCE}/etc/ultimaker_version")"
 
 perform_update
 
