@@ -87,9 +87,6 @@ setup()
     tar xvfJ "${TEST_UPDATE_ROOTFS_FILE}" -C "${toolbox_root_dir}${UPDATE_ROOTFS_SOURCE}" \
         > /dev/null 2> /dev/null
 
-    echo "999.999.999_testing_version" > "${toolbox_root_dir}${UPDATE_ROOTFS_SOURCE}${ULTIMAKER_VERSION_FILE}"
-    echo "1000000_testing_version" > "${toolbox_root_dir}${UPDATE_ROOTFS_SOURCE}${DEBIAN_VERSION_FILE}"
-
     work_dir="$(mktemp -d -t "${NAME_TEMPLATE_TOOLBOX}.XXXXXX")"
     cd "${work_dir}"
 
