@@ -159,7 +159,10 @@ create_debian_package()
     deb_dir="${BUILD_DIR}/debian_deb_build"
 
     mkdir -p "${deb_dir}/DEBIAN"
-    RELEASE_VERSION="${RELEASE_VERSION}" PACKAGE_NAME="${PACKAGE_NAME}" envsubst "\${RELEASE_VERSION} \${PACKAGE_NAME}" < "${CUR_DIR}/debian/control.in" > "${deb_dir}/DEBIAN/control"
+    sed -e 's/@ARCH@/'"${ARCH}"'/g' \
+        -e 's/@PACKAGE_NAME@/'"${PACKAGE_NAME}"'/g' \
+        -e 's/@RELEASE_VERSION@/'"${RELEASE_VERSION}"'/g' \
+        "${CUR_DIR}/debian/control.in" > "${DEB_DIR}/DEBIAN/control"
 
     mkdir -p "${deb_dir}${INSTALL_DIR}"
     cp "${BUILD_DIR}/${TOOLBOX_IMAGE}" "${deb_dir}${INSTALL_DIR}/"

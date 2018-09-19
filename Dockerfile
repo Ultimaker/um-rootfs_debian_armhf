@@ -14,7 +14,6 @@ RUN apk add --no-cache \
         dpkg \
         e2fsprogs \
         f2fs-tools \
-        gettext \
         rsync \
         sfdisk \
         squashfs-tools \
