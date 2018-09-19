@@ -11,26 +11,33 @@ set -eu
 # shellcheck source=test/include/chroot_env.sh
 . "test/include/chroot_env.sh"
 
+# common directory variables
+PREFIX="${PREFIX:-/usr/local}"
+EXEC_PREFIX="${PREFIX}"
+LIBEXECDIR="${EXEC_PREFIX}/libexec"
+SYSCONFDIR="${SYSCONFDIR:-/etc}"
+
 ARM_EMU_BIN="${ARM_EMU_BIN:-}"
 
-CWD="$(pwd)"
+SRC_DIR="$(pwd)"
 
-SYSTEM_UPDATE_DIR="${SYSTEM_UPDATE_DIR:-/etc/system_update}"
+SYSTEM_UPDATE_CONF_DIR="${SYSTEM_UPDATE_CONF_DIR:-${SYSCONFDIR}/jedi_system_update}"
+SYSTEM_UPDATE_SCRIPT_DIR="${SYSTEM_UPDATE_SCRIPT_DIR:-${LIBEXECDIR}/jedi_system_update.d/}"
 UPDATE_EXCLUDE_LIST_FILE="jedi_update_exclude_list.txt"
 UPDATE_ROOTFS_SOURCE="/tmp/update_source"
 TARGET_STORAGE_DEVICE=""
 
 JEDI_PARTITION_TABLE_FILE_NAME="config/jedi_emmc_sfdisk.table"
-UPDATE_FILES_COMMAND="${SYSTEM_UPDATE_DIR}.d/50_update_files.sh"
+UPDATE_FILES_COMMAND="${SYSTEM_UPDATE_SCRIPT_DIR}/50_update_files.sh"
 
-ULTIMAKER_VERSION_FILE="/etc/ultimaker_version"
-DEBIAN_VERSION_FILE="/etc/debian_version"
+ULTIMAKER_VERSION_FILE="${SYSCONFDIR}/ultimaker_version"
+DEBIAN_VERSION_FILE="${SYSCONFDIR}/debian_version"
 
 STORAGE_DEVICE_IMG="storage_device.img"
 BYTES_PER_SECTOR="512"
 STORAGE_DEVICE_SIZE="7553024" # sectors, about 3.6 GiB
 
-TEST_UPDATE_ROOTFS_FILE="${CWD}/test/test_rootfs.tar.xz"
+TEST_UPDATE_ROOTFS_FILE="${SRC_DIR}/test/test_rootfs.tar.xz"
 TEST_OUTPUT_FILE="$(mktemp -d)/test_results_$(basename "${0%.sh}").txt"
 
 NAME_TEMPLATE_TOOLBOX="um-update-toolbox"
@@ -62,7 +69,7 @@ create_dummy_storage_device()
 
     echo "writing partition table:"
 
-    sfdisk "${STORAGE_DEVICE_IMG}" < "${CWD}/${JEDI_PARTITION_TABLE_FILE_NAME}"
+    sfdisk "${STORAGE_DEVICE_IMG}" < "${SRC_DIR}/${JEDI_PARTITION_TABLE_FILE_NAME}"
 
     echo "formatting partitions"
 
@@ -105,7 +112,7 @@ teardown()
         rm -rf "${toolbox_root_dir:?}${UPDATE_ROOTFS_SOURCE}"
     fi
 
-    cd "${CWD}"
+    cd "${SRC_DIR}"
 
     if [ -d "${work_dir}" ] && [ -z "${work_dir##*update_files_workdir*}" ]; then
         rm -r "${work_dir}"
@@ -214,7 +221,7 @@ test_update_files_ok()
     update_target="$(mktemp -d -t "tmp_update_target.XXXXXX")"
     mount -t auto -v "${TARGET_STORAGE_DEVICE}p2" "${update_target}" || return 1
 
-    rsync --exclude-from "${CWD}/config/${UPDATE_EXCLUDE_LIST_FILE}" -c -a -x --dry-run \
+    rsync --exclude-from "${SRC_DIR}/config/${UPDATE_EXCLUDE_LIST_FILE}" -c -a -x --dry-run \
         "${toolbox_root_dir}${UPDATE_ROOTFS_SOURCE}/" "${update_target}/" || return 1
 
     umount "${update_target}"

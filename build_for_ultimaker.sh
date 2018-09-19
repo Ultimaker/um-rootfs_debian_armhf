@@ -13,9 +13,9 @@ CI_REGISTRY_IMAGE_TAG="${CI_REGISTRY_IMAGE_TAG:-latest}"
 
 ARCH="${ARCH:-armhf}"
 ARM_EMU_BIN=
-CUR_DIR=$(pwd)
 NAME_TEMPLATE_BUILD_DIR=".build_${ARCH}"
-BUILD_DIR="${CUR_DIR}/${NAME_TEMPLATE_BUILD_DIR}"
+BUILD_DIR="${NAME_TEMPLATE_BUILD_DIR}"
+PREFIX="${PREFIX:-/usr}"
 TOOLBOX_IMAGE="um-update_toolbox.xz.img"
 
 DOCKER_WORK_DIR="${DOCKER_WORK_DIR:-/build}"
@@ -72,6 +72,7 @@ run_in_docker()
         --rm \
         --privileged \
         -e "ARM_EMU_BIN=${ARM_EMU_BIN}" \
+        -e "PREFIX=${PREFIX}" \
         -e "RELEASE_VERSION=${RELEASE_VERSION:-}" \
         -v "${ARM_EMU_BIN}:${ARM_EMU_BIN}:ro" \
         -v "$(pwd):${DOCKER_WORK_DIR}" \
@@ -94,7 +95,7 @@ run_build()
     if command -V docker; then
         run_in_docker "${DOCKER_WORK_DIR}" "./build.sh" ""
     else
-        ./build.sh
+        PREFIX="${PREFIX}" ./build.sh
     fi
 
     # We need to place the .deb file in the root folder, as jedi-build expects it there.

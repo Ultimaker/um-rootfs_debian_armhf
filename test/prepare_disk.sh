@@ -11,16 +11,23 @@ set -eu
 # shellcheck source=test/include/chroot_env.sh
 . "test/include/chroot_env.sh"
 
+# common directory variables
+PREFIX="${PREFIX:-/usr/local}"
+EXEC_PREFIX="${PREFIX}"
+LIBEXECDIR="${EXEC_PREFIX}/libexec"
+SYSCONFDIR="${SYSCONFDIR:-/etc}"
+
 ARM_EMU_BIN="${ARM_EMU_BIN:-}"
 
-CWD="$(pwd)"
+SRC_DIR="$(pwd)"
 
-SYSTEM_UPDATE_DIR="${SYSTEM_UPDATE_DIR:-/etc/system_update}"
+SYSTEM_UPDATE_CONF_DIR="${SYSTEM_UPDATE_CONF_DIR:-${SYSCONFDIR}/jedi_system_update}"
+SYSTEM_UPDATE_SCRIPT_DIR="${SYSTEM_UPDATE_SCRIPT_DIR:-${LIBEXECDIR}/jedi_system_update.d}"
 PARTITION_TABLE_FILE="test_jedi_emmc_sfdisk.table"
 TARGET_STORAGE_DEVICE=""
 
 JEDI_PARTITION_TABLE_FILE_NAME="config/jedi_emmc_sfdisk.table"
-PREPARE_DISK_COMMAND="/etc/system_update.d/30_prepare_disk.sh"
+PREPARE_DISK_COMMAND="${SYSTEM_UPDATE_SCRIPT_DIR}/30_prepare_disk.sh"
 
 STORAGE_DEVICE_IMG="storage_device.img"
 MIN_PARTITION_SIZE="78124"    # 40 MiB (enough for f2fs and ext4)
@@ -45,13 +52,13 @@ result=0
 
 execute_prepare_disk()
 {
-    chroot_environment="SYSTEM_UPDATE_DIR=${SYSTEM_UPDATE_DIR}"
+    chroot_environment="SYSTEM_UPDATE_CONF_DIR=${SYSTEM_UPDATE_CONF_DIR}"
     chroot_environment="${chroot_environment} PARTITION_TABLE_FILE=${PARTITION_TABLE_FILE}"
     chroot_environment="${chroot_environment} TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE}"
 
     sha512sum "${PARTITION_TABLE_FILE}" > "${PARTITION_TABLE_FILE}.sha512"
-    cp "${PARTITION_TABLE_FILE}" "${toolbox_root_dir}${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}"
-    cp "${PARTITION_TABLE_FILE}.sha512" "${toolbox_root_dir}${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}.sha512"
+    cp "${PARTITION_TABLE_FILE}" "${toolbox_root_dir}/${SYSTEM_UPDATE_CONF_DIR}/${PARTITION_TABLE_FILE}"
+    cp "${PARTITION_TABLE_FILE}.sha512" "${toolbox_root_dir}/${SYSTEM_UPDATE_CONF_DIR}/${PARTITION_TABLE_FILE}.sha512"
 
     eval "${chroot_environment}" chroot "${toolbox_root_dir}" "${PREPARE_DISK_COMMAND}" || return 1
 
@@ -86,7 +93,7 @@ create_dummy_storage_device()
 
     echo "writing partition table:"
 
-    sfdisk "${STORAGE_DEVICE_IMG}" < "${CWD}/${JEDI_PARTITION_TABLE_FILE_NAME}"
+    sfdisk "${STORAGE_DEVICE_IMG}" < "${SRC_DIR}/${JEDI_PARTITION_TABLE_FILE_NAME}"
 
     echo "formatting partitions"
 
@@ -128,7 +135,7 @@ teardown()
         TARGET_STORAGE_DEVICE=""
     fi
 
-    cd "${CWD}"
+    cd "${SRC_DIR}"
 
     if [ -d "${work_dir}" ] && [ -z "${work_dir##*${NAME_TEMPLATE_TOOLBOX}*}" ]; then
         rm -r "${work_dir}"
@@ -337,8 +344,8 @@ test_partition_table_file_does_not_exist_nok()
 test_partition_table_file_does_not_exist_in_given_system_update_dir_nok()
 {
     chroot_environment="TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE}"
-    chroot_environment="${chroot_environment} SYSTEM_UPDATE_DIR=/etc"
-
+    chroot_environment="${chroot_environment} SYSTEM_UPDATE_CONF_DIR=${SYSTEM_UPDATE_CONF_DIR}"
+    chroot_environment="${chroot_environment} SYSTEM_UPDATE_SCRIPT_DIR=${SYSTEM_UPDATE_SCRIPT_DIR}"
     eval "${chroot_environment}" chroot "${toolbox_root_dir}" "${PREPARE_DISK_COMMAND}" || return 0
 }
 

@@ -8,6 +8,14 @@
 
 set -eu
 
+# common directory variables
+PREFIX="${PREFIX:-/usr/local}"
+DATAROOTDIR="${PREFIX}/share"
+DATADIR="${DATAROOTDIR}"
+EXEC_PREFIX="${PREFIX}"
+LIBEXECDIR="${EXEC_PREFIX}/libexec"
+SYSCONFDIR="${SYSCONFDIR:-/etc}"
+
 ARCH="${ARCH:-armhf}"
 ARM_EMU_BIN="${ARM_EMU_BIN:-}"
 
@@ -16,21 +24,20 @@ ALPINE_REPO="${ALPINE_REPO:-http://dl-cdn.alpinelinux.org/alpine}"
 
 TOOLBOX_IMAGE="${TOOLBOX_IMAGE:-um-update_toolbox.xz.img}"
 
-CUR_DIR="$(pwd)"
+SRC_DIR="$(pwd)"
 NAME_TEMPLATE_BUILD_DIR=".build_${ARCH}"
-BUILD_DIR="${BUILD_DIR:-${CUR_DIR}/${NAME_TEMPLATE_BUILD_DIR}}"
+BUILD_DIR="${BUILD_DIR:-${SRC_DIR}/${NAME_TEMPLATE_BUILD_DIR}}"
 ROOTFS_DIR="${BUILD_DIR}/rootfs"
 
-SYSTEM_UPDATE_DIR="/etc/system_update"
+SYSTEM_UPDATE_SCRIPT_DIR="${LIBEXECDIR}/jedi_system_update.d"
 UPDATE_ROOTFS_SOURCE="/mnt/update_rootfs_source"
 
 PACKAGES="blkid busybox e2fsprogs-extra f2fs-tools rsync sfdisk"
 
 # Debian package information
 PACKAGE_NAME="${PACKAGE_NAME:-um-update-toolbox}"
-INSTALL_DIR="${INSTALL_DIR:-/usr/share/${PACKAGE_NAME}}"
+INSTALL_DIR="${INSTALL_DIR:-${DATADIR}/${PACKAGE_NAME}}"
 RELEASE_VERSION="${RELEASE_VERSION:-9999.99.99}"
-DEB_PACKAGE="${PACKAGE_NAME}_${ARCH}-${RELEASE_VERSION}.deb"
 
 
 cleanup()
@@ -80,7 +87,7 @@ bootstrap_unprepare()
 
 add_update_scripts()
 {
-    target_script_dir="${ROOTFS_DIR}${SYSTEM_UPDATE_DIR}.d"
+    target_script_dir="${ROOTFS_DIR}${SYSTEM_UPDATE_SCRIPT_DIR}"
     if [ ! -d "${target_script_dir}" ]; then
         mkdir -p "${target_script_dir}"
     fi
@@ -90,7 +97,7 @@ add_update_scripts()
         mkdir -p "${target_system_executable_dir}"
     fi
 
-    local_script_dir="${CUR_DIR}/scripts"
+    local_script_dir="${SRC_DIR}/scripts"
     for script in "${local_script_dir}"/[0-9][0-9]_*.sh; do
         basename="${script##*/}"
         echo "Installing ${script} on '${target_script_dir}/${basename}'."
@@ -111,8 +118,8 @@ create_update_mount_points()
 
 add_configuration_files()
 {
-    local_config_dir="${CUR_DIR}/config"
-    target_config_dir="${ROOTFS_DIR}/etc/system_update"
+    local_config_dir="${SRC_DIR}/config"
+    target_config_dir="${ROOTFS_DIR}/${SYSCONFDIR}/jedi_system_update"
 
     if [ ! -d "${target_config_dir}" ]; then
         mkdir -p "${target_config_dir}"
@@ -129,8 +136,8 @@ bootstrap_rootfs()
 {
     echo "Bootstrapping Alpine Linux rootfs in to '${ROOTFS_DIR}'."
 
-    mkdir -p "${ROOTFS_DIR}/etc/apk"
-    echo "${ALPINE_REPO}/${ALPINE_VERSION}/main" > "${ROOTFS_DIR}/etc/apk/repositories"
+    mkdir -p "${ROOTFS_DIR}/${SYSCONFDIR}/apk"
+    echo "${ALPINE_REPO}/${ALPINE_VERSION}/main" > "${ROOTFS_DIR}/${SYSCONFDIR}/apk/repositories"
 
     # Install rootfs with base applications
     # shellcheck disable=SC2086
@@ -165,12 +172,12 @@ create_debian_package()
     sed -e 's/@ARCH@/'"${ARCH}"'/g' \
         -e 's/@PACKAGE_NAME@/'"${PACKAGE_NAME}"'/g' \
         -e 's/@RELEASE_VERSION@/'"${RELEASE_VERSION}"'/g' \
-        "${CUR_DIR}/debian/control.in" > "${DEB_DIR}/DEBIAN/control"
+        "${SRC_DIR}/debian/control.in" > "${DEB_DIR}/DEBIAN/control"
 
     mkdir -p "${deb_dir}${INSTALL_DIR}"
     cp "${BUILD_DIR}/${TOOLBOX_IMAGE}" "${deb_dir}${INSTALL_DIR}/"
 
-    dpkg-deb --build "${deb_dir}" "${BUILD_DIR}/${DEB_PACKAGE}"
+    dpkg-deb --build "${deb_dir}" "${BUILD_DIR}/${PACKAGE_NAME}_${ARCH}-${RELEASE_VERSION}.deb"
 }
 
 usage()

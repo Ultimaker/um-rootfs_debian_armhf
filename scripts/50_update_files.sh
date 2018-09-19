@@ -7,8 +7,11 @@
 
 set -eu
 
+# common directory variables
+SYSCONFDIR="${SYSCONFDIR:-/etc}"
+
 # system_update wide configuration settings with default values
-SYSTEM_UPDATE_DIR="${SYSTEM_UPDATE_DIR:-/etc/system_update}"
+SYSTEM_UPDATE_CONF_DIR="${SYSTEM_UPDATE_CONF_DIR:-${SYSCONFDIR}/jedi_system_update}"
 UPDATE_EXCLUDE_LIST_FILE="${UPDATE_EXCLUDE_LIST_FILE:-jedi_update_exclude_list.txt}"
 TARGET_STORAGE_DEVICE="${TARGET_STORAGE_DEVICE:-}"
 UPDATE_ROOTFS_SOURCE="${UPDATE_ROOTFS_SOURCE:-}"
@@ -40,7 +43,7 @@ perform_update()
         exit 1
     fi
 
-    if ! rsync --exclude-from "${SYSTEM_UPDATE_DIR}/${UPDATE_EXCLUDE_LIST_FILE}" -c -a --delete -x \
+    if ! rsync --exclude-from "${SYSTEM_UPDATE_CONF_DIR}/${UPDATE_EXCLUDE_LIST_FILE}" -c -a --delete -x \
         "${UPDATE_ROOTFS_SOURCE}/" "${UPDATE_TARGET}/"; then
         echo "Error: unable to sync files from ${UPDATE_ROOTFS_SOURCE}/ to ${UPDATE_TARGET}/."
         exit 1
@@ -101,8 +104,8 @@ if [ ! -b "${TARGET_STORAGE_DEVICE}" ]; then
     exit 1
 fi
 
-if [ ! -f "${SYSTEM_UPDATE_DIR}/${UPDATE_EXCLUDE_LIST_FILE}" ]; then
-    echo "Update failed: file '${SYSTEM_UPDATE_DIR}/${UPDATE_EXCLUDE_LIST_FILE}' not found."
+if [ ! -f "${SYSTEM_UPDATE_CONF_DIR}/${UPDATE_EXCLUDE_LIST_FILE}" ]; then
+    echo "Update failed: file '${SYSTEM_UPDATE_CONF_DIR}/${UPDATE_EXCLUDE_LIST_FILE}' not found."
     exit 1
 fi
 

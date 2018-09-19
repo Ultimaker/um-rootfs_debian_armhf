@@ -11,13 +11,20 @@ set -eu
 # shellcheck source=test/include/chroot_env.sh
 . "test/include/chroot_env.sh"
 
-SYSTEM_UPDATE_DIR="/etc/system_update"
-SYSTEM_EXECUTABLE_DIR="/sbin"
-PREPARE_DISK_COMMAND="${SYSTEM_UPDATE_DIR}.d/30_prepare_disk.sh"
-UPDATE_FILES_COMMAND="${SYSTEM_UPDATE_DIR}.d/50_update_files.sh"
-START_UPDATE_COMMAND="${SYSTEM_EXECUTABLE_DIR}/start_update.sh"
-JEDI_PARTITION_TABLE_FILE="${SYSTEM_UPDATE_DIR}/jedi_emmc_sfdisk.table"
-JEDI_EXCLUDE_LIST_FILE="${SYSTEM_UPDATE_DIR}/jedi_update_exclude_list.txt"
+# common directory variables
+PREFIX="${PREFIX:-/usr/local}"
+EXEC_PREFIX="${PREFIX}"
+LIBEXECDIR="${EXEC_PREFIX}/libexec"
+SYSCONFDIR="${SYSCONFDIR:-/etc}"
+SBINDIR="/sbin"
+
+SYSTEM_UPDATE_CONF_DIR="${SYSTEM_UPDATE_CONF_DIR:-${SYSCONFDIR}/jedi_system_update}"
+SYSTEM_UPDATE_SCRIPT_DIR="${SYSTEM_UPDATE_SCRIPT_DIR:-${LIBEXECDIR}/jedi_system_update.d}"
+PREPARE_DISK_COMMAND="${SYSTEM_UPDATE_SCRIPT_DIR}/30_prepare_disk.sh"
+UPDATE_FILES_COMMAND="${SYSTEM_UPDATE_SCRIPT_DIR}/50_update_files.sh"
+START_UPDATE_COMMAND="${SBINDIR}/start_update.sh"
+JEDI_PARTITION_TABLE_FILE="${SYSTEM_UPDATE_CONF_DIR}/jedi_emmc_sfdisk.table"
+JEDI_EXCLUDE_LIST_FILE="${SYSTEM_UPDATE_CONF_DIR}/jedi_update_exclude_list.txt"
 TMP_TEST_IMAGE_FILE="/tmp/test_file.img"
 
 TEST_OUTPUT_FILE="$(mktemp -d)/test_results_$(basename "${0%.sh}").txt"
@@ -254,8 +261,8 @@ run_test test_update_files_command
 run_test test_jedi_exclude_list_exists
 run_test test_jedi_partition_table_file_exists
 
-echo
-echo "Test results:"
+echo "________________________________________________________________________________"
+echo "Test results '${TEST_OUTPUT_FILE}':"
 echo
 cat "${TEST_OUTPUT_FILE}"
 echo "________________________________________________________________________________"

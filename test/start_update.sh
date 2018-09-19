@@ -13,12 +13,13 @@ set -eu
 
 # Common directory variables
 SBINDIR="/sbin"
+SYSCONFDIR="${SYSCONFDIR:-/etc}"
 
 ARM_EMU_BIN="${ARM_EMU_BIN:-}"
 
-CWD="$(pwd)"
+SRC_DIR="$(pwd)"
 
-SYSTEM_UPDATE_DIR="${SYSTEM_UPDATE_DIR:-/etc/system_update}"
+SYSTEM_UPDATE_CONF_DIR="${SYSTEM_UPDATE_CONF_DIR:-${SYSCONFDIR}/jedi_system_update}"
 START_UPDATE_COMMAND="${SBINDIR}/start_update.sh"
 UPDATE_ROOTFS_SOURCE="/tmp/update_source"
 TARGET_STORAGE_DEVICE=""
@@ -33,7 +34,7 @@ STORAGE_DEVICE_SIZE="7553024" # sectors, about 3.6 GiB
 TEST_UPDATE_ROOTFS_FILE="test/test_rootfs.tar.xz"
 TEMP_TEST_UPDATE_ROOTFS_FILE="rootfs-v1.2.3.tar.xz"
 
-TEST_UPDATE_ROOTFS_FILE="${CWD}/test/test_rootfs.tar.xz"
+TEST_UPDATE_ROOTFS_FILE="${SRC_DIR}/test/test_rootfs.tar.xz"
 TEST_OUTPUT_FILE="$(mktemp -d)/test_results_$(basename "${0%.sh}").txt"
 
 NAME_TEMPLATE_TOOLBOX="um-update-toolbox"
@@ -67,7 +68,7 @@ create_dummy_storage_device()
 
     echo "writing partition table:"
 
-    sfdisk "${STORAGE_DEVICE_IMG}" < "${CWD}/${JEDI_PARTITION_TABLE_FILE_NAME}"
+    sfdisk "${STORAGE_DEVICE_IMG}" < "${SRC_DIR}/${JEDI_PARTITION_TABLE_FILE_NAME}"
 
     echo "formatting partitions"
 
@@ -103,7 +104,7 @@ teardown()
 {
     teardown_chroot_env "${toolbox_root_dir}"
 
-    cd "${CWD}"
+    cd "${SRC_DIR}"
 
     if [ -b "${TARGET_STORAGE_DEVICE}" ]; then
         losetup -d "${TARGET_STORAGE_DEVICE}"
@@ -179,14 +180,14 @@ run_test()
 test_rsync_ignore_file_not_found_nok()
 {
     cp "${TEST_UPDATE_ROOTFS_FILE}" "${update_mount}/${TEMP_TEST_UPDATE_ROOTFS_FILE}"
-    rm "${toolbox_root_dir:?}/${SYSTEM_UPDATE_DIR:?}/"*_exclude_list.txt
+    rm "${toolbox_root_dir:?}/${SYSTEM_UPDATE_CONF_DIR}/"*_exclude_list.txt
     "${toolbox_root_dir}/${START_UPDATE_COMMAND}" "${toolbox_root_dir}" "${update_mount}" "${TARGET_STORAGE_DEVICE}" || return 0
 }
 
 test_partition_table_not_found_nok()
 {
     cp "${TEST_UPDATE_ROOTFS_FILE}" "${update_mount}/${TEMP_TEST_UPDATE_ROOTFS_FILE}"
-    rm "${toolbox_root_dir:?}/${SYSTEM_UPDATE_DIR:?}/"*.table
+    rm "${toolbox_root_dir:?}/${SYSTEM_UPDATE_CONF_DIR}/"*.table
     "${toolbox_root_dir}/${START_UPDATE_COMMAND}" "${toolbox_root_dir}" "${update_mount}" "${TARGET_STORAGE_DEVICE}" || return 0
 }
 
@@ -213,7 +214,7 @@ test_successful_update_ok()
     update_target="$(mktemp -d)"
     mount -t auto -v "${TARGET_STORAGE_DEVICE}p2" "${update_target}"
 
-    rsync --exclude-from "${CWD}/${UPDATE_EXCLUDE_LIST_FILE}" -c -a -x --dry-run \
+    rsync --exclude-from "${SRC_DIR}/${UPDATE_EXCLUDE_LIST_FILE}" -c -a -x --dry-run \
         "${toolbox_root_dir}/${UPDATE_ROOTFS_SOURCE}/" "${update_target}/" || return 1
 
     umount "${update_target}"

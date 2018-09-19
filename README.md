@@ -15,13 +15,13 @@ On top of the standard *distro* we install the required tooling, such as; *e2fsp
 #### Config directory:
 This directory contains configuration files that are used by the
 system configuration scripts in the 'scripts' directory. The config files
-are installed in the '/etc/system_update'.
+are installed in the '/etc/jedi_system_update'.
 
 #### Scripts directory:
 Contains update and setup scripts. The main entrypoint is 'start_update.sh' which is installed
  in the system binary directory '/sbin', note that this is a hardcoded dependency for the 
  *um-kernel* repository since the *initramfs* init script looks for this script. The other
- configuration scripts are installed in the '/etc/system_update.d'.    
+ configuration scripts are normally installed in '/usr/libexec/jedi_system_update.d'.    
 
 #### Tests directory:
 - A test to check the build environment
@@ -50,7 +50,7 @@ it by running tests. The first and the latter can be disabled. Run the help of t
 During the Kernels initramfs stage this toolbox image is mounted and the entrypoint script '/sbin/start_update.sh' 
 will be executed if available.
  
-The system configuration scripts are installed in '/etc/system_update.d' directory and are prefixed 
+The system configuration scripts are installed in '/usr/libexec/jedi_system_update.d' directory and are prefixed 
 with a two digit number so the 'start_update.sh' script can sort them.
  
 The um-update_toolbox will serve as a *chroot* environment for the update. Generic execution of all 
@@ -70,11 +70,13 @@ the scripts is prepared so that the script can be executed generically.
 * UPDATE_ROOTFS_SOURCE     - This is the directory within the toolbox root that contains the update files.
                              It is used e.g. in the 'update_files.sh' script as the source directory for the
                              update files. 
-* SYSTEM_UPDATE_DIR        - The system update directory is a directory within the toolbox root 
-                             that contains the system configuration scripts. The configuration files 
-                             can be found in '/etc/system_update', i.e. the partition table and exclude
-                             list file. The system configuration scripts can be found in the same 
-                             directory post-fixed with '.d' (/etc/system_update.d). 
+* SYSTEM_UPDATE_CONF_DIR   - The system update directory is a directory within the toolbox root 
+                             that contains the system update configuration. The configuration files 
+                             can be found in '/etc/jedi_system_update', i.e. the partition table and exclude
+                             list file.
+* SYSTEM_UPDATE_SCRIPT_DIR - The system update scripts directory is a directory within the toolbox root 
+                             that contains the system update scripts. The system update scripts can be found
+                             in (/usr/libexec/jedi_system_update.d). 
 
 ## Updating the docker image in the docker registry
 We only want to update the docker image when required and we only want to do this after quality 

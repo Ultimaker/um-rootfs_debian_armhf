@@ -8,6 +8,12 @@
 
 set -eu
 
+# Common directory variables
+PREFIX="${PREFIX:-/usr/local}"
+EXEC_PREFIX="${PREFIX}"
+LIBEXECDIR="${EXEC_PREFIX}/libexec"
+SYSCONFDIR="${SYSCONFDIR:-/etc}"
+
 # Script mandatory arguments
 # The mount point of the update toolbox, used as chroot root.
 TOOLBOX_MOUNT=""
@@ -18,7 +24,8 @@ TARGET_STORAGE_DEVICE=""
 
 # Toolbox execution environment arguments
 # The directory in the chroot environment containing the system update and configuration files.
-SYSTEM_UPDATE_DIR="${SYSTEM_UPDATE_DIR:-/etc/system_update}"
+SYSTEM_UPDATE_CONF_DIR="${SYSTEM_UPDATE_CONF_DIR:-${SYSCONFDIR}/jedi_system_update/}"
+SYSTEM_UPDATE_SCRIPT_DIR="${SYSTEM_UPDATE_SCRIPT_DIR:-${LIBEXECDIR}/jedi_system_update.d/}"
 # The partition table file to use, default jedi_emmc_sfdisk.table, should exist in the system update dir.
 PARTITION_TABLE_FILE="${PARTITION_TABLE_FILE:-jedi_emmc_sfdisk.table}"
 # The exclude file list when updating the firmware files, should exist in the system update dir.
@@ -129,7 +136,8 @@ extract_update_rootfs()
 perform_update()
 {
     echo "Performing update..."
-    chroot_environment="SYSTEM_UPDATE_DIR=${SYSTEM_UPDATE_DIR}"
+    chroot_environment="SYSTEM_UPDATE_CONF_DIR=${SYSTEM_UPDATE_CONF_DIR}"
+    chroot_environment="${chroot_environment} SYSTEM_UPDATE_SCRIPT_DIR=${SYSTEM_UPDATE_SCRIPT_DIR}"
     chroot_environment="${chroot_environment} PARTITION_TABLE_FILE=${PARTITION_TABLE_FILE}"
     chroot_environment="${chroot_environment} UPDATE_EXCLUDE_LIST_FILE=${UPDATE_EXCLUDE_LIST_FILE}"
     chroot_environment="${chroot_environment} UPDATE_ROOTFS_SOURCE=${UPDATE_ROOTFS_SOURCE}"
@@ -137,7 +145,7 @@ perform_update()
 
     echo "chroot script execution environment setup with: ${chroot_environment}"
 
-    for script in "${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR}.d/"[0-9][0-9]_*.sh; do
+    for script in "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_SCRIPT_DIR}/"[0-9][0-9]_*.sh; do
         if [ ! -x "${script}" ]; then
             continue
         fi
@@ -217,28 +225,33 @@ if [ ! -b "${TARGET_STORAGE_DEVICE}" ]; then
     exit 1
 fi
 
-if [ -z "${SYSTEM_UPDATE_DIR}" ]; then
-    echo "Error, update failed: system update dir is not provided."
+if [ -z "${SYSTEM_UPDATE_CONF_DIR}" ]; then
+    echo "Error, update failed: system update configuration dir is not provided."
     exit 1
 fi
 
-if [ ! -d "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_DIR}" ]; then
-    echo "Error, update failed: ${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_DIR} is not a directory."
+if [ -z "${SYSTEM_UPDATE_SCRIPT_DIR}" ]; then
+    echo "Error, update failed: system update scripts dir is not provided."
     exit 1
 fi
 
-if [ ! -f "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}" ]; then
-    echo "Error, update failed: '${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}' not found."
+if [ ! -d "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_CONF_DIR}" ]; then
+    echo "Error, update failed: ${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_CONF_DIR} is not a directory."
     exit 1
 fi
 
-if [ ! -f "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}.sha512" ]; then
-    echo "Error, update failed: '${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}.sha512' not found."
+if [ ! -f "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_CONF_DIR}/${PARTITION_TABLE_FILE}" ]; then
+    echo "Error, update failed: '${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_CONF_DIR}/${PARTITION_TABLE_FILE}' not found."
     exit 1
 fi
 
-if [ ! -f "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_DIR}/${UPDATE_EXCLUDE_LIST_FILE}" ]; then
-    echo "Error, update failed: '${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_DIR}/${UPDATE_EXCLUDE_LIST_FILE}' not found."
+if [ ! -f "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_CONF_DIR}/${PARTITION_TABLE_FILE}.sha512" ]; then
+    echo "Error, update failed: '${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_CONF_DIR}/${PARTITION_TABLE_FILE}.sha512' not found."
+    exit 1
+fi
+
+if [ ! -f "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_CONF_DIR}/${UPDATE_EXCLUDE_LIST_FILE}" ]; then
+    echo "Error, update failed: '${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_CONF_DIR}/${UPDATE_EXCLUDE_LIST_FILE}' not found."
     exit 1
 fi
 
