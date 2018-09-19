@@ -122,6 +122,8 @@ setup()
 
 teardown()
 {
+    teardown_chroot_env "${toolbox_root_dir}"
+
     if [ -b "${TARGET_STORAGE_DEVICE}" ]; then
         losetup -d "${TARGET_STORAGE_DEVICE}"
         TARGET_STORAGE_DEVICE=""
@@ -132,8 +134,6 @@ teardown()
     if [ -d "${work_dir}" ] && [ -z "${work_dir##*${NAME_TEMPLATE_TOOLBOX}*}" ]; then
         rm -r "${work_dir}"
     fi
-
-    teardown_chroot_env "${toolbox_root_dir}"
 
     if [ -d "${toolbox_root_dir}" ] && [ -z "${toolbox_root_dir##*${NAME_TEMPLATE_TOOLBOX}*}" ]; then
         rm -r "${toolbox_root_dir}"

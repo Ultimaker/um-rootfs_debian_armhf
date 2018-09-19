@@ -39,11 +39,11 @@ setup()
 
 teardown()
 {
+    teardown_chroot_env "${toolbox_root_dir}"
+
     if [ -f "${toolbox_root_dir}/${TMP_TEST_IMAGE_FILE}" ]; then
         unlink "${toolbox_root_dir}/${TMP_TEST_IMAGE_FILE}"
     fi
-
-    teardown_chroot_env "${toolbox_root_dir}"
 
     if grep -q "${toolbox_root_dir}" "/proc/mounts"; then
         umount "${toolbox_root_dir}"
