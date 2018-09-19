@@ -3,4 +3,5 @@ Version: @RELEASE_VERSION@
 Architecture: @ARCH@
 Maintainer: Ultimaker <software-embedded-platform@ultimaker.com>
 Priority: optional
+Section: utils
 Description: Toolbox used during the system update.
