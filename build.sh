@@ -17,7 +17,8 @@ ALPINE_REPO="${ALPINE_REPO:-http://dl-cdn.alpinelinux.org/alpine}"
 TOOLBOX_IMAGE="${TOOLBOX_IMAGE:-um-update_toolbox.xz.img}"
 
 CUR_DIR="$(pwd)"
-BUILD_DIR="${CUR_DIR}/.build_${ARCH}"
+NAME_TEMPLATE_BUILD_DIR=".build_${ARCH}"
+BUILD_DIR="${BUILD_DIR:-${CUR_DIR}/${NAME_TEMPLATE_BUILD_DIR}}"
 ROOTFS_DIR="${BUILD_DIR}/rootfs"
 
 SYSTEM_UPDATE_DIR="/etc/system_update"
@@ -45,7 +46,9 @@ cleanup()
         exit 1
     fi
 
-    rm -rf "${BUILD_DIR:?}"
+    if [ -z "${BUILD_DIR##*${NAME_TEMPLATE_BUILD_DIR}*}" ]; then
+        rm -rf "${BUILD_DIR:?}"
+    fi
 }
 
 bootstrap_prepare()
