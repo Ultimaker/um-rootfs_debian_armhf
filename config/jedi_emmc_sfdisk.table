@@ -6,6 +6,6 @@
 label: dos
 unit: sectors
 
-p1 : start=     2048, size=    65536, Id=83, name=boot
-p2 : start=    67584, size=  1931264, Id=83, name=root
-p3 : start=  1998848, size=  5554176, Id=83, name=user
+p1 : start=     2048, size=    65536, Id=83, name="boot"
+p2 : start=    67584, size=  1931264, Id=83, name="root"
+p3 : start=  1998848, size=  5554176, Id=83, name="user"
