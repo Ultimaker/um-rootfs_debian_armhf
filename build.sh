@@ -166,18 +166,18 @@ compress_rootfs()
 
 create_debian_package()
 {
-    deb_dir="${BUILD_DIR}/debian_deb_build"
+    DEB_DIR="${BUILD_DIR}/debian_deb_build"
 
-    mkdir -p "${deb_dir}/DEBIAN"
+    mkdir -p "${DEB_DIR}/DEBIAN"
     sed -e 's/@ARCH@/'"${ARCH}"'/g' \
         -e 's/@PACKAGE_NAME@/'"${PACKAGE_NAME}"'/g' \
         -e 's/@RELEASE_VERSION@/'"${RELEASE_VERSION}"'/g' \
         "${SRC_DIR}/debian/control.in" > "${DEB_DIR}/DEBIAN/control"
 
-    mkdir -p "${deb_dir}/${INSTALL_DIR}"
-    cp "${BUILD_DIR}/${TOOLBOX_IMAGE}" "${deb_dir}/${INSTALL_DIR}/"
+    mkdir -p "${DEB_DIR}/${INSTALL_DIR}"
+    cp "${BUILD_DIR}/${TOOLBOX_IMAGE}" "${DEB_DIR}/${INSTALL_DIR}/"
 
-    dpkg-deb --build "${deb_dir}" "${BUILD_DIR}/${PACKAGE_NAME}_${ARCH}-${RELEASE_VERSION}.deb"
+    dpkg-deb --build "${DEB_DIR}" "${BUILD_DIR}/${PACKAGE_NAME}_${ARCH}-${RELEASE_VERSION}.deb"
 }
 
 usage()
