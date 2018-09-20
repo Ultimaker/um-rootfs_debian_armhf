@@ -223,7 +223,7 @@ done
 shift "$((OPTIND - 1))"
 
 if [ "${#}" -ne 1 ]; then
-    echo "Missing argument <file.img>."
+    echo "Missing argument <toolbox image file>."
     usage
     exit 1
 fi

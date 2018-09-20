@@ -109,11 +109,11 @@ extract_update_rootfs()
     fi
 
     # shellcheck disable=SC2086
-    # Disabled because file globbing is needed here
+    # Allow file globing for ${update_rootfs_pattern}
     update_rootfs_archive="$(basename "${UPDATE_MOUNT}/"${update_rootfs_pattern})"
     echo "Found '${update_rootfs_archive}', attempting to extract to '${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}'."
     if ! tar -tJf "${UPDATE_MOUNT}/${update_rootfs_archive}" > /dev/null 2> /dev/null; then
-        echo "Error, update failed: ${UPDATE_MOUNT}/${update_rootfs_archive} is corrupt"
+        echo "Error, update failed: ${UPDATE_MOUNT}/${update_rootfs_archive} is corrupt."
         exit 1
     fi
 
