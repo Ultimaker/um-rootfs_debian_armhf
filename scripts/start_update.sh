@@ -48,8 +48,8 @@ usage()
 cleanup()
 {
     if [ -d "${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}" ]; then
-        echo "Cleaning up, removing: '${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}/' files."
-        rm -rf "${TOOLBOX_MOUNT:?}/${UPDATE_ROOTFS_SOURCE:?}"/*
+        echo "Cleaning up, unmount: '${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}' files."
+        umount "${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}"
     fi
 
     if grep -q "${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}" "/proc/mounts"; then
@@ -72,13 +72,6 @@ prepare()
 {
     echo "Preparing update..."
 
-    temp_folder="$(mktemp -d)"
-
-    if ! mount --bind "${temp_folder}" "${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}"; then
-        echo "Error, update failed: temp source update directory: '${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}' cannot be mounted."
-        exit 1
-    fi
-
     if ! grep -q "${TOOLBOX_MOUNT}/proc" "/proc/mounts"; then
         mount -t proc none "${TOOLBOX_MOUNT}/proc"
     fi
@@ -89,6 +82,11 @@ prepare()
 
     if ! grep -q "${TOOLBOX_MOUNT}/tmp" "/proc/mounts"; then
         mount -t tmpfs none "${TOOLBOX_MOUNT}/tmp"
+    fi
+
+    if ! mount -t tmpfs none "${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}"; then
+        echo "Error, update failed: temporary source update directory: '${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}' cannot be mounted."
+        exit 1
     fi
 }
 
