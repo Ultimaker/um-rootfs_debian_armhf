@@ -52,9 +52,9 @@ cleanup()
         rm -rf "${TOOLBOX_MOUNT:?}/${UPDATE_ROOTFS_SOURCE:?}"/*
     fi
 
-    if grep -q "${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}" "/proc/mounts"; then
-        echo "Cleaning up, unmount: '${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}'."
-        umount "${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}"
+    if grep -q "${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}" "/proc/mounts"; then
+        echo "Cleaning up, unmount: '${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}'."
+        umount "${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}"
     fi
 
     if grep -q "${TOOLBOX_MOUNT}/proc" "/proc/mounts"; then
@@ -113,7 +113,7 @@ extract_update_rootfs()
     # shellcheck disable=SC2086
     # Disabled because file globbing is needed here
     update_rootfs_archive="$(basename "${UPDATE_MOUNT}/"${update_rootfs_pattern})"
-    echo "Found '${update_rootfs_archive}', attempting to extract to '${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}'."
+    echo "Found '${update_rootfs_archive}', attempting to extract to '${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}'."
     if ! tar -tJf "${UPDATE_MOUNT}/${update_rootfs_archive}" > /dev/null 2> /dev/null; then
         echo "Error, update failed: ${UPDATE_MOUNT}/${update_rootfs_archive} is corrupt"
         exit 1

@@ -87,7 +87,7 @@ bootstrap_unprepare()
 
 add_update_scripts()
 {
-    target_script_dir="${ROOTFS_DIR}${SYSTEM_UPDATE_SCRIPT_DIR}"
+    target_script_dir="${ROOTFS_DIR}/${SYSTEM_UPDATE_SCRIPT_DIR}"
     if [ ! -d "${target_script_dir}" ]; then
         mkdir -p "${target_script_dir}"
     fi
@@ -174,8 +174,8 @@ create_debian_package()
         -e 's/@RELEASE_VERSION@/'"${RELEASE_VERSION}"'/g' \
         "${SRC_DIR}/debian/control.in" > "${DEB_DIR}/DEBIAN/control"
 
-    mkdir -p "${deb_dir}${INSTALL_DIR}"
-    cp "${BUILD_DIR}/${TOOLBOX_IMAGE}" "${deb_dir}${INSTALL_DIR}/"
+    mkdir -p "${deb_dir}/${INSTALL_DIR}"
+    cp "${BUILD_DIR}/${TOOLBOX_IMAGE}" "${deb_dir}/${INSTALL_DIR}/"
 
     dpkg-deb --build "${deb_dir}" "${BUILD_DIR}/${PACKAGE_NAME}_${ARCH}-${RELEASE_VERSION}.deb"
 }

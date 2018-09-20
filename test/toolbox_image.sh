@@ -118,7 +118,7 @@ test_execute_busybox()
 
 test_execute_sha512()
 {
-    chroot "${toolbox_root_dir}" sha512sum /bin/busybox > "${toolbox_root_dir}${TMP_TEST_IMAGE_FILE}" || return 1
+    chroot "${toolbox_root_dir}" sha512sum /bin/busybox > "${toolbox_root_dir}/${TMP_TEST_IMAGE_FILE}" || return 1
     chroot "${toolbox_root_dir}" sha512sum -csw "${TMP_TEST_IMAGE_FILE}" || return 1
 }
 
@@ -165,30 +165,30 @@ test_execute_rsync()
 
 test_start_update_command()
 {
-    test -x "${toolbox_root_dir}${START_UPDATE_COMMAND}" || return 1
+    test -x "${toolbox_root_dir}/${START_UPDATE_COMMAND}" || return 1
     chroot "${toolbox_root_dir}" "${START_UPDATE_COMMAND}" "-h" || return 1
 }
 
 test_prepare_disk_command()
 {
-    test -x "${toolbox_root_dir}${PREPARE_DISK_COMMAND}" || return 1
+    test -x "${toolbox_root_dir}/${PREPARE_DISK_COMMAND}" || return 1
     chroot "${toolbox_root_dir}" "${PREPARE_DISK_COMMAND}" "-h" || return 1
 }
 
 test_update_files_command()
 {
-    test -x "${toolbox_root_dir}${UPDATE_FILES_COMMAND}" || return 1
+    test -x "${toolbox_root_dir}/${UPDATE_FILES_COMMAND}" || return 1
     chroot "${toolbox_root_dir}" "${UPDATE_FILES_COMMAND}" "-h" || return 1
 }
 
 test_jedi_exclude_list_exists()
 {
-    test -f "${toolbox_root_dir}${JEDI_EXCLUDE_LIST_FILE}" || return 1
+    test -f "${toolbox_root_dir}/${JEDI_EXCLUDE_LIST_FILE}" || return 1
 }
 
 test_jedi_partition_table_file_exists()
 {
-    test -f "${toolbox_root_dir}${JEDI_PARTITION_TABLE_FILE}" || return 1
+    test -f "${toolbox_root_dir}/${JEDI_PARTITION_TABLE_FILE}" || return 1
 }
 
 usage()

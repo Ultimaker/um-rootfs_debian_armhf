@@ -89,8 +89,8 @@ setup()
     toolbox_root_dir="$(mktemp -d -t "${NAME_TEMPLATE_WORKDIR}.XXXXXX")"
     setup_chroot_env "${toolbox_image}" "${toolbox_root_dir}"
 
-    mkdir -p "${toolbox_root_dir}${UPDATE_ROOTFS_SOURCE}"
-    tar xvfJ "${TEST_UPDATE_ROOTFS_FILE}" -C "${toolbox_root_dir}${UPDATE_ROOTFS_SOURCE}" \
+    mkdir -p "${toolbox_root_dir}/${UPDATE_ROOTFS_SOURCE}"
+    tar -xvfJ "${TEST_UPDATE_ROOTFS_FILE}" -C "${toolbox_root_dir}/${UPDATE_ROOTFS_SOURCE}" \
         > /dev/null 2> /dev/null
 
     work_dir="$(mktemp -d -t "${NAME_TEMPLATE_TOOLBOX}.XXXXXX")"
@@ -108,7 +108,7 @@ teardown()
         TARGET_STORAGE_DEVICE=""
     fi
 
-    if [ -d "${toolbox_root_dir}${UPDATE_ROOTFS_SOURCE}" ] && [ -z "${toolbox_root_dir##*um-update-toolbox*}" ]; then
+    if [ -d "${toolbox_root_dir}/${UPDATE_ROOTFS_SOURCE}" ] && [ -z "${toolbox_root_dir##*um-update-toolbox*}" ]; then
         rm -rf "${toolbox_root_dir:?}${UPDATE_ROOTFS_SOURCE}"
     fi
 
@@ -196,7 +196,7 @@ test_no_debian_distribution_found_nok()
     chroot_environment="TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE}"
     chroot_environment="${chroot_environment} UPDATE_ROOTFS_SOURCE=${UPDATE_ROOTFS_SOURCE}"
 
-    unlink "${toolbox_root_dir}${UPDATE_ROOTFS_SOURCE}${DEBIAN_VERSION_FILE}"
+    unlink "${toolbox_root_dir}/${UPDATE_ROOTFS_SOURCE}/${DEBIAN_VERSION_FILE}"
 
     eval "${chroot_environment}" chroot "${toolbox_root_dir}" "${UPDATE_FILES_COMMAND}" || return 0
 }
@@ -206,7 +206,7 @@ test_no_ultimaker_software_found_nok()
     chroot_environment="TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE}"
     chroot_environment="${chroot_environment} UPDATE_ROOTFS_SOURCE=${UPDATE_ROOTFS_SOURCE}"
 
-    unlink "${toolbox_root_dir}${UPDATE_ROOTFS_SOURCE}${ULTIMAKER_VERSION_FILE}"
+    unlink "${toolbox_root_dir}/${UPDATE_ROOTFS_SOURCE}/${ULTIMAKER_VERSION_FILE}"
 
     eval "${chroot_environment}" chroot "${toolbox_root_dir}" "${UPDATE_FILES_COMMAND}" || return 0
 }
@@ -222,7 +222,7 @@ test_update_files_ok()
     mount -t auto -v "${TARGET_STORAGE_DEVICE}p2" "${update_target}" || return 1
 
     rsync --exclude-from "${SRC_DIR}/config/${UPDATE_EXCLUDE_LIST_FILE}" -c -a -x --dry-run \
-        "${toolbox_root_dir}${UPDATE_ROOTFS_SOURCE}/" "${update_target}/" || return 1
+        "${toolbox_root_dir}/${UPDATE_ROOTFS_SOURCE}/" "${update_target}/" || return 1
 
     umount "${update_target}"
 
