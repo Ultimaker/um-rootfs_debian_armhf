@@ -1,6 +1,11 @@
+# partition table for the Jedi platform
+# boot:     32 MiB
+# root:    943 MiB
+# user:   2712 MiB
+
 label: dos
 unit: sectors
 
-/dev/mmcblk1p1 : start=     2048, size=    65536, Id=83, name=boot
-/dev/mmcblk1p2 : start=    67584, size=  1931264, Id=83, name=root
-/dev/mmcblk1p3 : start=  1998848, size=  5554176, Id=83, name=user
+p1 : start=     2048, size=    65536, Id=83, name=boot
+p2 : start=    67584, size=  1931264, Id=83, name=root
+p3 : start=  1998848, size=  5554176, Id=83, name=user
