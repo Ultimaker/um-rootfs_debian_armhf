@@ -102,7 +102,7 @@ teardown()
     fi
 
     if [ -d "${toolbox_root_dir}${UPDATE_ROOTFS_SOURCE}" ] && [ -z "${toolbox_root_dir##*um-update-toolbox*}" ]; then
-        rm -rf "${toolbox_root_dir}${UPDATE_ROOTFS_SOURCE}"
+        rm -rf "${toolbox_root_dir:?}${UPDATE_ROOTFS_SOURCE}"
     fi
 
     cd "${CWD}"
@@ -122,7 +122,7 @@ failure_exit()
     echo "When finished, the following is needed to cleanup!"
     echo "  sudo sh -c '\\"
     echo "    losetup -d '${TARGET_STORAGE_DEVICE}' && \\"
-    echo "    rm -rf '${work_dir:?}/*' && \\"
+    echo "    rm -rf '${work_dir}/*' && \\"
 
     failure_exit_chroot_env
 
@@ -218,7 +218,7 @@ test_update_files_ok()
     umount "${update_target}"
 
     if [ -z "${update_target##*tmp_update_target*}" ]; then
-        rm -rf "${update_target}"
+        rm -rf "${update_target:?}"
     fi
 }
 

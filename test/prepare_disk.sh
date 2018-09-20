@@ -145,7 +145,7 @@ failure_exit()
     echo "When finished, the following is needed to cleanup!"
     echo "  sudo sh -c '\\"
     echo "    losetup -d '${TARGET_STORAGE_DEVICE}' && \\"
-    echo "    rm -rf '${work_dir:?}/*' && \\"
+    echo "    rm -rf '${work_dir}/*' && \\"
 
     failure_exit_chroot_env
 

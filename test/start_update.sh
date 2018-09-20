@@ -116,15 +116,15 @@ teardown()
     fi
 
     if [ -d "${toolbox_root_dir}" ] && [ -z "${toolbox_root_dir##*${NAME_TEMPLATE_TOOLBOX}*}" ]; then
-        rm -rf "${toolbox_root_dir}"
+        rm -rf "${toolbox_root_dir:?}"
     fi
 
     if [ -d "${update_mount}" ] && [ -z "${update_mount##*${NAME_TEMPLATE_UPDATEROOT}*}" ]; then
-        rm -rf "${update_mount}"
+        rm -rf "${update_mount:?}"
     fi
 
     if [ -d "${work_dir}" ] && [ -z "${work_dir##*${NAME_TEMPLATE_WORKDIR}*}" ]; then
-        rm -rf "${work_dir}"
+        rm -rf "${work_dir:?}"
     fi
 }
 
@@ -219,7 +219,7 @@ test_successful_update_ok()
     umount "${update_target}"
 
     if [ -z "${update_target##*/tmp/*}" ]; then
-        rm -rf "${update_target}"
+        rm -rf "${update_target:?}"
     fi
 }
 

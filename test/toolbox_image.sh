@@ -50,7 +50,7 @@ teardown()
     fi
 
     if [ -d "${toolbox_root_dir}" ] && [ -z "${toolbox_root_dir##/*um-update-toolbox*}" ]; then
-        rm -rf "${toolbox_root_dir}"
+        rm -rf "${toolbox_root_dir:?}"
     fi
 }
 

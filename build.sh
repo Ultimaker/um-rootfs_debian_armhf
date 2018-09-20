@@ -45,7 +45,7 @@ cleanup()
         exit 1
     fi
 
-    rm -rf "${BUILD_DIR}"
+    rm -rf "${BUILD_DIR:?}"
 }
 
 bootstrap_prepare()
