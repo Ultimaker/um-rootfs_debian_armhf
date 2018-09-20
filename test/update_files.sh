@@ -90,7 +90,7 @@ setup()
     setup_chroot_env "${toolbox_image}" "${toolbox_root_dir}"
 
     mkdir -p "${toolbox_root_dir}/${UPDATE_ROOTFS_SOURCE}"
-    tar -xvfJ "${TEST_UPDATE_ROOTFS_FILE}" -C "${toolbox_root_dir}/${UPDATE_ROOTFS_SOURCE}" \
+    tar -xJvf "${TEST_UPDATE_ROOTFS_FILE}" -C "${toolbox_root_dir}/${UPDATE_ROOTFS_SOURCE}" \
         > /dev/null 2> /dev/null
 
     work_dir="$(mktemp -d -t "${NAME_TEMPLATE_TOOLBOX}.XXXXXX")"
