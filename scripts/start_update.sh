@@ -80,7 +80,7 @@ prepare()
     fi
 
     if ! grep -q "${TOOLBOX_MOUNT}/proc" "/proc/mounts"; then
-        mount --bind /proc "${TOOLBOX_MOUNT}/proc"
+        mount -t proc none "${TOOLBOX_MOUNT}/proc"
     fi
 
     if ! grep -q "${TOOLBOX_MOUNT}/dev" "/proc/mounts"; then
