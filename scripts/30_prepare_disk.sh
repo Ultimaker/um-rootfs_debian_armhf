@@ -23,12 +23,12 @@ usage()
 {
     echo "Usage: ${0} [OPTIONS]"
     echo "Prepare the target TARGET_STORAGE_DEVICE to a predefined disk layout."
-    echo "  -d <TARGET_STORAGE_DEVICE>, the target storage device for the update"
+    echo "  -d <TARGET_STORAGE_DEVICE>, the target storage device for the update (mandatory)"
     echo "  -h Print this help text and exit"
-    echo "  -t <PARTITION_TABLE_FILE>, Partition table file"
-    echo "NOTE: This script is destructive and will destroy your data."
+    echo "  -t <PARTITION_TABLE_FILE>, Partition table file (mandatory)"
     echo "Note: the PARTITION_TABLE_FILE and TARGET_STORAGE_DEVICE arguments can also be passed by"
     echo "adding them to the scripts runtime environment."
+    echo "Warning: This script is destructive and will destroy your data."
 }
 
 is_integer()
@@ -300,8 +300,14 @@ while getopts ":d:ht:" options; do
 done
 shift "$((OPTIND - 1))"
 
-if [ -z "${PARTITION_TABLE_FILE}" ] || [ -z "${TARGET_STORAGE_DEVICE}" ]; then
-    echo "Missing arguments <PARTITION_TABLE_FILE> and/or <TARGET_STORAGE_DEVICE>."
+if [ -z "${PARTITION_TABLE_FILE}" ]; then
+    echo "Missing mandatory option <PARTITION_TABLE_FILE>."
+    usage
+    exit 1
+fi
+
+if [ -z "${TARGET_STORAGE_DEVICE}" ]; then
+    echo "Missing mandatory argument <TARGET_STORAGE_DEVICE>."
     usage
     exit 1
 fi
