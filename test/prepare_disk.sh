@@ -52,9 +52,11 @@ result=0
 
 execute_prepare_disk()
 {
-    chroot_environment="SYSTEM_UPDATE_CONF_DIR=${SYSTEM_UPDATE_CONF_DIR}"
-    chroot_environment="${chroot_environment} PARTITION_TABLE_FILE=${PARTITION_TABLE_FILE}"
-    chroot_environment="${chroot_environment} TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE}"
+    chroot_environment=" \
+        SYSTEM_UPDATE_CONF_DIR=${SYSTEM_UPDATE_CONF_DIR} \
+        PARTITION_TABLE_FILE=${PARTITION_TABLE_FILE} \
+        TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE} \
+    "
 
     sha512sum "${PARTITION_TABLE_FILE}" > "${PARTITION_TABLE_FILE}.sha512"
     cp "${PARTITION_TABLE_FILE}" "${toolbox_root_dir}/${SYSTEM_UPDATE_CONF_DIR}/${PARTITION_TABLE_FILE}"
@@ -343,9 +345,11 @@ test_partition_table_file_does_not_exist_nok()
 
 test_partition_table_file_does_not_exist_in_given_system_update_dir_nok()
 {
-    chroot_environment="TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE}"
-    chroot_environment="${chroot_environment} SYSTEM_UPDATE_CONF_DIR=${SYSTEM_UPDATE_CONF_DIR}"
-    chroot_environment="${chroot_environment} SYSTEM_UPDATE_SCRIPT_DIR=${SYSTEM_UPDATE_SCRIPT_DIR}"
+    chroot_environment=" \
+        SYSTEM_UPDATE_CONF_DIR=${SYSTEM_UPDATE_CONF_DIR} \
+        SYSTEM_UPDATE_SCRIPT_DIR=${SYSTEM_UPDATE_SCRIPT_DIR} \
+        TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE} \
+    "
     eval "${chroot_environment}" chroot "${toolbox_root_dir}" "${PREPARE_DISK_COMMAND}" || return 0
 }
 

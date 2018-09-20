@@ -134,14 +134,17 @@ extract_update_rootfs()
 perform_update()
 {
     echo "Performing update..."
-    chroot_environment="SYSTEM_UPDATE_CONF_DIR=${SYSTEM_UPDATE_CONF_DIR}"
-    chroot_environment="${chroot_environment} SYSTEM_UPDATE_SCRIPT_DIR=${SYSTEM_UPDATE_SCRIPT_DIR}"
-    chroot_environment="${chroot_environment} PARTITION_TABLE_FILE=${PARTITION_TABLE_FILE}"
-    chroot_environment="${chroot_environment} UPDATE_EXCLUDE_LIST_FILE=${UPDATE_EXCLUDE_LIST_FILE}"
-    chroot_environment="${chroot_environment} UPDATE_ROOTFS_SOURCE=${UPDATE_ROOTFS_SOURCE}"
-    chroot_environment="${chroot_environment} TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE}"
+    chroot_environment=" \
+        PARTITION_TABLE_FILE=${PARTITION_TABLE_FILE} \
+        SYSTEM_UPDATE_CONF_DIR=${SYSTEM_UPDATE_CONF_DIR} \
+        SYSTEM_UPDATE_SCRIPT_DIR=${SYSTEM_UPDATE_SCRIPT_DIR} \
+        TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE}\
+        UPDATE_EXCLUDE_LIST_FILE=${UPDATE_EXCLUDE_LIST_FILE} \
+        UPDATE_ROOTFS_SOURCE=${UPDATE_ROOTFS_SOURCE} \
+    "
 
-    echo "chroot script execution environment setup with: ${chroot_environment}"
+    echo "chroot script execution additional environment: "
+    echo "${chroot_environment}" | tr -s "${IFS}" '\n'
 
     for script in "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_SCRIPT_DIR}/"[0-9][0-9]_*.sh; do
         if [ ! -x "${script}" ]; then
