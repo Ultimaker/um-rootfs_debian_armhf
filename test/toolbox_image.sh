@@ -29,6 +29,8 @@ TMP_TEST_IMAGE_FILE="/tmp/test_file.img"
 
 TEST_OUTPUT_FILE="$(mktemp -d)/test_results_$(basename "${0%.sh}").txt"
 
+NAME_TEMPLATE_TOOLBOX="um-update-toolbox"
+
 toolbox_image=""
 toolbox_root_dir=""
 
@@ -38,7 +40,7 @@ result=0
 
 setup()
 {
-    toolbox_root_dir="$(mktemp -d -t "um-update-toolbox.XXXXXXXXXX")"
+    toolbox_root_dir="$(mktemp -d -t "${NAME_TEMPLATE_TOOLBOX}.XXXXXX")"
     setup_chroot_env "${toolbox_image}" "${toolbox_root_dir}"
 
     dd if=/dev/zero of="${toolbox_root_dir}/${TMP_TEST_IMAGE_FILE}" bs=1 count=0 seek=128M
@@ -56,7 +58,7 @@ teardown()
         umount "${toolbox_root_dir}"
     fi
 
-    if [ -d "${toolbox_root_dir}" ] && [ -z "${toolbox_root_dir##/*um-update-toolbox*}" ]; then
+    if [ -d "${toolbox_root_dir}" ] && [ -z "${toolbox_root_dir##*${NAME_TEMPLATE_TOOLBOX}*}" ]; then
         rm -rf "${toolbox_root_dir:?}"
     fi
 }
