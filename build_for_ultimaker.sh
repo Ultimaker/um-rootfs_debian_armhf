@@ -97,9 +97,12 @@ run_build()
     else
         PREFIX="${PREFIX}" ./build.sh
     fi
+}
 
-    # We need to place the .deb file in the root folder, as jedi-build expects it there.
+deliver_pkg()
+{
     cp "${BUILD_DIR}/"*.deb "./"
+    chown "$(id -u):$(id -g)" "./"*.deb
 }
 
 run_tests()
@@ -169,5 +172,7 @@ if [ "${run_tests}" = "yes" ]; then
 else
     run_build
 fi
+
+deliver_pkg
 
 exit 0
