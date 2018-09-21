@@ -16,10 +16,10 @@ ARM_EMU_BIN=
 NAME_TEMPLATE_BUILD_DIR=".build_${ARCH}"
 BUILD_DIR="${NAME_TEMPLATE_BUILD_DIR}"
 PREFIX="${PREFIX:-/usr}"
+RELEASE_VERSION="${RELEASE_VERSION:-}"
 TOOLBOX_IMAGE="um-update_toolbox.xz.img"
 
 DOCKER_WORK_DIR="${DOCKER_WORK_DIR:-/build}"
-DOCKER_BUILD_DIR="${DOCKER_WORK_DIR}/${NAME_TEMPLATE_BUILD_DIR}"
 
 ARMv7_MAGIC="7f454c4601010100000000000000000002002800"
 
@@ -64,39 +64,47 @@ setup_emulation_support()
 
 run_in_docker()
 {
-    work_dir="${1}"
-    script="${2}"
-    args="${3}"
-
     docker run \
-        --rm \
         --privileged \
+        --rm \
+        -e "ARCH=${ARCH}" \
         -e "ARM_EMU_BIN=${ARM_EMU_BIN}" \
         -e "PREFIX=${PREFIX}" \
-        -e "RELEASE_VERSION=${RELEASE_VERSION:-}" \
-        -v "${ARM_EMU_BIN}:${ARM_EMU_BIN}:ro" \
+        -e "RELEASE_VERSION=${RELEASE_VERSION}" \
         -v "$(pwd):${DOCKER_WORK_DIR}" \
-        -w "${work_dir}" \
+        -v "${ARM_EMU_BIN}:${ARM_EMU_BIN}:ro" \
+        -w "${DOCKER_WORK_DIR}" \
         "${CI_REGISTRY_IMAGE}:${CI_REGISTRY_IMAGE_TAG}" \
-        "${script}" "${args}"
+        "${@}"
+}
+
+run_in_shell()
+{
+    ARCH="${ARCH}" \
+    PREFIX="${PREFIX}" \
+    RELEASE_VERSION="${RELEASE_VERSION}" \
+    eval "${@}"
+}
+
+run_script()
+{
+    if ! command -V docker; then
+        echo "Docker not found, attempting native build."
+
+        run_in_shell "${@}"
+    else
+        run_in_docker "${@}"
+    fi
 }
 
 env_check()
 {
-    if command -V docker; then
-        run_in_docker "${DOCKER_WORK_DIR}" "./test/buildenv.sh" ""
-    else
-        "./test/buildenv.sh"
-    fi
+    run_script "./test/buildenv.sh"
 }
 
 run_build()
 {
-    if command -V docker; then
-        run_in_docker "${DOCKER_WORK_DIR}" "./build.sh" ""
-    else
-        PREFIX="${PREFIX}" ./build.sh
-    fi
+    run_script "./build.sh"
 }
 
 deliver_pkg()
@@ -107,17 +115,10 @@ deliver_pkg()
 
 run_tests()
 {
-    if command -V docker; then
-        run_in_docker "${DOCKER_WORK_DIR}" "./test/toolbox_image.sh" "${DOCKER_BUILD_DIR}/${TOOLBOX_IMAGE}"
-        run_in_docker "${DOCKER_WORK_DIR}" "./test/start_update.sh" "${DOCKER_BUILD_DIR}/${TOOLBOX_IMAGE}"
-        run_in_docker "${DOCKER_WORK_DIR}" "./test/prepare_disk.sh" "${DOCKER_BUILD_DIR}/${TOOLBOX_IMAGE}"
-        run_in_docker "${DOCKER_WORK_DIR}" "./test/update_files.sh" "${DOCKER_BUILD_DIR}/${TOOLBOX_IMAGE}"
-    else
-        "./test/toolbox_image.sh" "${BUILD_DIR}/${TOOLBOX_IMAGE}"
-        "./test/start_update.sh" "${BUILD_DIR}/${TOOLBOX_IMAGE}"
-        "./test/prepare_disk.sh" "${BUILD_DIR}/${TOOLBOX_IMAGE}"
-        "./test/update_files.sh" "${BUILD_DIR}/${TOOLBOX_IMAGE}"
-    fi
+    run_script "./test/prepare_disk.sh" "${BUILD_DIR}/${TOOLBOX_IMAGE}"
+    run_script "./test/start_update.sh" "${BUILD_DIR}/${TOOLBOX_IMAGE}"
+    run_script "./test/toolbox_image.sh" "${BUILD_DIR}/${TOOLBOX_IMAGE}"
+    run_script "./test/update_files.sh" "${BUILD_DIR}/${TOOLBOX_IMAGE}"
 }
 
 usage()
