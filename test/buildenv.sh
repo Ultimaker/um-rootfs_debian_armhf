@@ -117,6 +117,16 @@ check_emulation_support()
     echo "${ARM_EMU_BIN}: ok"
 }
 
+check_tar_support()
+{
+    printf "tar support: "
+    if ! tar --format=gnu --version; then
+        echo "failed"
+        echo "Please install GNU tar >= 1.13"
+        result=1
+    fi
+}
+
 check_filesystem_support()
 {
     for fs in ${FILESYSTEMS}; do
@@ -142,6 +152,7 @@ check_command_installation
 check_emulation_support
 check_filesystem_support
 check_loopdevice_support
+check_tar_support
 
 if [ "${result}" -ne 0 ]; then
     echo "ERROR: Missing preconditions, cannot continue."
