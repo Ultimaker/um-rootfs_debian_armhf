@@ -166,11 +166,10 @@ if [ "${run_env_check}" = "yes" ]; then
     env_check
 fi
 
+run_build
+
 if [ "${run_tests}" = "yes" ]; then
-    run_build
     run_tests
-else
-    run_build
 fi
 
 deliver_pkg
