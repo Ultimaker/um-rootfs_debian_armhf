@@ -51,8 +51,8 @@ setup_chroot_env()
         exit 1
     fi
 
-    touch "${target_root_dir}${ARM_EMU_BIN}"
-    mount --bind -o "ro" "${ARM_EMU_BIN}" "${target_root_dir}${ARM_EMU_BIN}"
+    touch "${target_root_dir}/${ARM_EMU_BIN}"
+    mount --bind -o "ro" "${ARM_EMU_BIN}" "${target_root_dir}/${ARM_EMU_BIN}"
 }
 
 teardown_chroot_env()
@@ -61,12 +61,12 @@ teardown_chroot_env()
 
     echo "Teardown chroot env."
 
-    if [ -f "${target_root_dir}${ARM_EMU_BIN}" ]; then
-        if grep -q "$(realpath "${target_root_dir}${ARM_EMU_BIN}")" "/proc/mounts"; then
+    if [ -f "${target_root_dir}/${ARM_EMU_BIN}" ]; then
+        if grep -q "$(realpath "${target_root_dir}/${ARM_EMU_BIN}")" "/proc/mounts"; then
             umount "${target_root_dir}${ARM_EMU_BIN}"
         fi
-        if [ -f "${target_root_dir}${ARM_EMU_BIN}" ]; then
-            unlink "${target_root_dir}${ARM_EMU_BIN}"
+        if [ -f "${target_root_dir}/${ARM_EMU_BIN}" ]; then
+            unlink "${target_root_dir}/${ARM_EMU_BIN}"
         fi
     fi
 

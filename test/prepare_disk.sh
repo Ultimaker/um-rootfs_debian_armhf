@@ -11,16 +11,23 @@ set -eu
 # shellcheck source=test/include/chroot_env.sh
 . "test/include/chroot_env.sh"
 
+# common directory variables
+PREFIX="${PREFIX:-/usr/local}"
+EXEC_PREFIX="${PREFIX}"
+LIBEXECDIR="${EXEC_PREFIX}/libexec"
+SYSCONFDIR="${SYSCONFDIR:-/etc}"
+
 ARM_EMU_BIN="${ARM_EMU_BIN:-}"
 
-CWD="$(pwd)"
+SRC_DIR="$(pwd)"
 
-SYSTEM_UPDATE_DIR="${SYSTEM_UPDATE_DIR:-/etc/system_update}"
+SYSTEM_UPDATE_CONF_DIR="${SYSTEM_UPDATE_CONF_DIR:-${SYSCONFDIR}/jedi_system_update}"
+SYSTEM_UPDATE_SCRIPT_DIR="${SYSTEM_UPDATE_SCRIPT_DIR:-${LIBEXECDIR}/jedi_system_update.d}"
 PARTITION_TABLE_FILE="test_jedi_emmc_sfdisk.table"
 TARGET_STORAGE_DEVICE=""
 
 JEDI_PARTITION_TABLE_FILE_NAME="config/jedi_emmc_sfdisk.table"
-PREPARE_DISK_COMMAND="/etc/system_update.d/30_prepare_disk.sh"
+PREPARE_DISK_COMMAND="${SYSTEM_UPDATE_SCRIPT_DIR}/30_prepare_disk.sh"
 
 STORAGE_DEVICE_IMG="storage_device.img"
 MIN_PARTITION_SIZE="78124"    # 40 MiB (enough for f2fs and ext4)
@@ -45,15 +52,17 @@ result=0
 
 execute_prepare_disk()
 {
-    chroot_environment="SYSTEM_UPDATE_DIR=${SYSTEM_UPDATE_DIR}"
-    chroot_environment="${chroot_environment} PARTITION_TABLE_FILE=${PARTITION_TABLE_FILE}"
-    chroot_environment="${chroot_environment} TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE}"
+    chroot_environment=" \
+        SYSTEM_UPDATE_CONF_DIR=${SYSTEM_UPDATE_CONF_DIR} \
+        PARTITION_TABLE_FILE=${PARTITION_TABLE_FILE} \
+        TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE} \
+    "
 
     sha512sum "${PARTITION_TABLE_FILE}" > "${PARTITION_TABLE_FILE}.sha512"
-    cp "${PARTITION_TABLE_FILE}" "${toolbox_root_dir}${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}"
-    cp "${PARTITION_TABLE_FILE}.sha512" "${toolbox_root_dir}${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}.sha512"
+    cp "${PARTITION_TABLE_FILE}" "${toolbox_root_dir}/${SYSTEM_UPDATE_CONF_DIR}/${PARTITION_TABLE_FILE}"
+    cp "${PARTITION_TABLE_FILE}.sha512" "${toolbox_root_dir}/${SYSTEM_UPDATE_CONF_DIR}/${PARTITION_TABLE_FILE}.sha512"
 
-    chroot "${toolbox_root_dir}" /bin/sh -c "${chroot_environment} ${PREPARE_DISK_COMMAND}" || return 1
+    eval "${chroot_environment}" chroot "${toolbox_root_dir}" "${PREPARE_DISK_COMMAND}" || return 1
 
     sfdisk -d "${TARGET_STORAGE_DEVICE}" > "${PARTITION_TABLE_FILE}.verify"
 
@@ -86,7 +95,7 @@ create_dummy_storage_device()
 
     echo "writing partition table:"
 
-    sfdisk "${STORAGE_DEVICE_IMG}" < "${CWD}/${JEDI_PARTITION_TABLE_FILE_NAME}"
+    sfdisk "${STORAGE_DEVICE_IMG}" < "${SRC_DIR}/${JEDI_PARTITION_TABLE_FILE_NAME}"
 
     echo "formatting partitions"
 
@@ -104,7 +113,6 @@ create_dummy_storage_device()
 setup()
 {
     toolbox_root_dir="$(mktemp -d -t "${NAME_TEMPLATE_TOOLBOX}.XXXXXXX")"
-
     setup_chroot_env "${toolbox_image}" "${toolbox_root_dir}"
 
     work_dir="$(mktemp -d -t "${NAME_TEMPLATE_WORKDIR}.XXXXXXX")"
@@ -129,7 +137,7 @@ teardown()
         TARGET_STORAGE_DEVICE=""
     fi
 
-    cd "${CWD}"
+    cd "${SRC_DIR}"
 
     if [ -d "${work_dir}" ] && [ -z "${work_dir##*${NAME_TEMPLATE_TOOLBOX}*}" ]; then
         rm -r "${work_dir}"
@@ -146,7 +154,7 @@ failure_exit()
     echo "When finished, the following is needed to cleanup!"
     echo "  sudo sh -c '\\"
     echo "    losetup -d '${TARGET_STORAGE_DEVICE}' && \\"
-    echo "    rm -rf '${work_dir:?}/*' && \\"
+    echo "    rm -rf '${work_dir}/*' && \\"
 
     failure_exit_chroot_env
 
@@ -331,25 +339,30 @@ test_corrupted_f2fs_superblocks_ok()
 test_partition_table_file_does_not_exist_nok()
 {
     chroot_environment="TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE}"
-    chroot "${toolbox_root_dir}" /bin/sh -c "${PREPARE_DISK_COMMAND}" || return 0
+
+    eval "${chroot_environment}" chroot "${toolbox_root_dir}" "${PREPARE_DISK_COMMAND}" || return 0
 }
 
 test_partition_table_file_does_not_exist_in_given_system_update_dir_nok()
 {
-    chroot_environment="TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE}"
-    chroot_environment="${chroot_environment} SYSTEM_UPDATE_DIR=/etc"
-    chroot "${toolbox_root_dir}" /bin/sh -c "${chroot_environment} ${PREPARE_DISK_COMMAND}" || return 0
+    chroot_environment=" \
+        SYSTEM_UPDATE_CONF_DIR=${SYSTEM_UPDATE_CONF_DIR} \
+        SYSTEM_UPDATE_SCRIPT_DIR=${SYSTEM_UPDATE_SCRIPT_DIR} \
+        TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE} \
+    "
+    eval "${chroot_environment}" chroot "${toolbox_root_dir}" "${PREPARE_DISK_COMMAND}" || return 0
 }
 
 test_target_storage_device_argument_not_provided_nok()
 {
-    chroot "${toolbox_root_dir}" /bin/sh -c "${PREPARE_DISK_COMMAND}" || return 0
+    eval chroot "${toolbox_root_dir}" "${PREPARE_DISK_COMMAND}" || return 0
 }
 
 test_target_storage_device_is_not_a_block_device_nok()
 {
     chroot_environment="TARGET_STORAGE_DEVICE=/dev/tty1"
-    chroot "${toolbox_root_dir}" /bin/sh -c "${chroot_environment} ${PREPARE_DISK_COMMAND}" || return 0
+
+    eval "${chroot_environment}" chroot "${toolbox_root_dir}" "${PREPARE_DISK_COMMAND}" || return 0
 }
 
 usage()

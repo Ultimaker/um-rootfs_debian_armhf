@@ -12,7 +12,23 @@ ARM_EMU_BIN="${ARM_EMU_BIN:-}"
 BINFMT_MISC="${BINFMT_MISC:-/proc/sys/fs/binfmt_misc/}"
 
 FILESYSTEMS="ext4 f2fs overlay squashfs tmpfs"
-COMMANDS="apk blkid dpkg fsck.ext4 fsck.f2fs gettext losetup mkfs.ext4 mkfs.f2fs mksquashfs rsync sed sfdisk shuf tar xz"
+COMMANDS=" \
+    apk \
+    blkid \
+    dpkg \
+    fsck.ext4 \
+    fsck.f2fs \
+    losetup \
+    mkfs.ext4 \
+    mkfs.f2fs \
+    mksquashfs \
+    rsync \
+    sed \
+    sfdisk \
+    shuf \
+    tar \
+    xz \
+"
 
 
 ARMv7_MAGIC="7f454c4601010100000000000000000002002800"
@@ -90,7 +106,7 @@ check_emulation_support()
         result=1
         return
     fi
-    
+
     if ! "${ARM_EMU_BIN}" "--version" 1> /dev/null ; then
         echo "non-executable"
         echo "Unable to execute ARMv7 interpreter '${ARM_EMU_BIN}'."
@@ -99,6 +115,16 @@ check_emulation_support()
     fi
 
     echo "${ARM_EMU_BIN}: ok"
+}
+
+check_tar_support()
+{
+    printf "tar support: "
+    if ! tar --format=gnu --version; then
+        echo "failed"
+        echo "Please install GNU tar >= 1.13"
+        result=1
+    fi
 }
 
 check_filesystem_support()
@@ -126,6 +152,7 @@ check_command_installation
 check_emulation_support
 check_filesystem_support
 check_loopdevice_support
+check_tar_support
 
 if [ "${result}" -ne 0 ]; then
     echo "ERROR: Missing preconditions, cannot continue."

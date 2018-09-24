@@ -8,8 +8,11 @@
 
 set -eu
 
+# common directory variables
+SYSCONFDIR="${SYSCONFDIR:-/etc}"
+
 # system_update wide configuration settings with default values
-SYSTEM_UPDATE_DIR="${SYSTEM_UPDATE_DIR:-/etc/system_update}"
+SYSTEM_UPDATE_CONF_DIR="${SYSTEM_UPDATE_CONF_DIR:-${SYSCONFDIR}/jedi_system_update}"
 PARTITION_TABLE_FILE="${PARTITION_TABLE_FILE:-jedi_emmc_sfdisk.table}"
 TARGET_STORAGE_DEVICE="${TARGET_STORAGE_DEVICE:-}"
 # end system_update wide configuration settings
@@ -20,12 +23,12 @@ usage()
 {
     echo "Usage: ${0} [OPTIONS]"
     echo "Prepare the target TARGET_STORAGE_DEVICE to a predefined disk layout."
-    echo "  -d <TARGET_STORAGE_DEVICE>, the target storage device for the update"
+    echo "  -d <TARGET_STORAGE_DEVICE>, the target storage device for the update (mandatory)"
     echo "  -h Print this help text and exit"
-    echo "  -t <PARTITION_TABLE_FILE>, Partition table file"
-    echo "NOTE: This script is destructive and will destroy your data."
+    echo "  -t <PARTITION_TABLE_FILE>, Partition table file (mandatory)"
     echo "Note: the PARTITION_TABLE_FILE and TARGET_STORAGE_DEVICE arguments can also be passed by"
     echo "adding them to the scripts runtime environment."
+    echo "Warning: This script is destructive and will destroy your data."
 }
 
 is_integer()
@@ -41,8 +44,8 @@ is_comment()
 verify_partition_file()
 {
     cwd="$(pwd)"
-    cd "${SYSTEM_UPDATE_DIR}" # change to update dir because path is hardcoded in the sha512 output.
-    sha512sum -csw "${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}.sha512" || return 1
+    cd "${SYSTEM_UPDATE_CONF_DIR}" # change to update dir because path is hardcoded in the sha512 output.
+    sha512sum -csw "${SYSTEM_UPDATE_CONF_DIR}/${PARTITION_TABLE_FILE}.sha512" || return 1
     cd "${cwd}"
 }
 
@@ -75,7 +78,7 @@ is_resize_needed()
                 break 2
             fi
         done < "${current_partition_table_file}"
-    done < "${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}"
+    done < "${SYSTEM_UPDATE_CONF_DIR}/${PARTITION_TABLE_FILE}"
 
     unlink "${current_partition_table_file}" || return 1
 
@@ -173,7 +176,7 @@ partitions_format()
 
                 eval "${mkfs_cmd}" "${TARGET_STORAGE_DEVICE}${partition}"
             fi
-        done < "${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}"
+        done < "${SYSTEM_UPDATE_CONF_DIR}/${PARTITION_TABLE_FILE}"
     done
 }
 
@@ -201,14 +204,14 @@ partition_resize()
             echo "Partition '${device}' is beyond the size of the disk (${partition_end} > ${target_disk_end}), cannot continue."
             exit 1
         fi
-    done < "${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}"
+    done < "${SYSTEM_UPDATE_CONF_DIR}/${PARTITION_TABLE_FILE}"
 
     if ! "${boot_partition_available}"; then
         echo "Error, no boot partition available, cannot continue."
         exit 1
     fi
 
-    sfdisk --quiet "${TARGET_STORAGE_DEVICE}" < "${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}"
+    sfdisk --quiet "${TARGET_STORAGE_DEVICE}" < "${SYSTEM_UPDATE_CONF_DIR}/${PARTITION_TABLE_FILE}"
 }
 
 backup_data()
@@ -297,19 +300,25 @@ while getopts ":d:ht:" options; do
 done
 shift "$((OPTIND - 1))"
 
-if [ -z "${PARTITION_TABLE_FILE}" ] || [ -z "${TARGET_STORAGE_DEVICE}" ]; then
-    echo "Missing arguments <PARTITION_TABLE_FILE> and/or <TARGET_STORAGE_DEVICE>."
+if [ -z "${PARTITION_TABLE_FILE}" ]; then
+    echo "Missing mandatory option <PARTITION_TABLE_FILE>."
     usage
     exit 1
 fi
 
-if [ ! -f "${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}" ]; then
-    echo "Partition table file '${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}' does not exist, cannot continue."
+if [ -z "${TARGET_STORAGE_DEVICE}" ]; then
+    echo "Missing mandatory argument <TARGET_STORAGE_DEVICE>."
+    usage
     exit 1
 fi
 
-if [ ! -f "${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}.sha512" ]; then
-    echo "Partition table checksum file '${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}' does not exist, cannot continue."
+if [ ! -f "${SYSTEM_UPDATE_CONF_DIR}/${PARTITION_TABLE_FILE}" ]; then
+    echo "Partition table file '${SYSTEM_UPDATE_CONF_DIR}/${PARTITION_TABLE_FILE}' does not exist, cannot continue."
+    exit 1
+fi
+
+if [ ! -f "${SYSTEM_UPDATE_CONF_DIR}/${PARTITION_TABLE_FILE}.sha512" ]; then
+    echo "Partition table checksum file '${SYSTEM_UPDATE_CONF_DIR}/${PARTITION_TABLE_FILE}' does not exist, cannot continue."
     exit 1
 fi
 

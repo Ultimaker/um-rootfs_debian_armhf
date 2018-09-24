@@ -8,6 +8,12 @@
 
 set -eu
 
+# Common directory variables
+PREFIX="${PREFIX:-/usr/local}"
+EXEC_PREFIX="${PREFIX}"
+LIBEXECDIR="${EXEC_PREFIX}/libexec"
+SYSCONFDIR="${SYSCONFDIR:-/etc}"
+
 # Script mandatory arguments
 # The mount point of the update toolbox, used as chroot root.
 TOOLBOX_MOUNT=""
@@ -18,7 +24,8 @@ TARGET_STORAGE_DEVICE=""
 
 # Toolbox execution environment arguments
 # The directory in the chroot environment containing the system update and configuration files.
-SYSTEM_UPDATE_DIR="${SYSTEM_UPDATE_DIR:-/etc/system_update}"
+SYSTEM_UPDATE_CONF_DIR="${SYSTEM_UPDATE_CONF_DIR:-${SYSCONFDIR}/jedi_system_update/}"
+SYSTEM_UPDATE_SCRIPT_DIR="${SYSTEM_UPDATE_SCRIPT_DIR:-${LIBEXECDIR}/jedi_system_update.d/}"
 # The partition table file to use, default jedi_emmc_sfdisk.table, should exist in the system update dir.
 PARTITION_TABLE_FILE="${PARTITION_TABLE_FILE:-jedi_emmc_sfdisk.table}"
 # The exclude file list when updating the firmware files, should exist in the system update dir.
@@ -41,13 +48,13 @@ usage()
 cleanup()
 {
     if [ -d "${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}" ]; then
-        echo "Cleaning up, removing: '${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}/' files."
-        rm -rf "${TOOLBOX_MOUNT:?}/${UPDATE_ROOTFS_SOURCE:?}"/*
+        echo "Cleaning up, unmount: '${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}' files."
+        umount "${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}"
     fi
 
-    if grep -q "${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}" "/proc/mounts"; then
-        echo "Cleaning up, unmount: '${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}'."
-        umount "${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}"
+    if grep -q "${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}" "/proc/mounts"; then
+        echo "Cleaning up, unmount: '${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}'."
+        umount "${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}"
     fi
 
     if grep -q "${TOOLBOX_MOUNT}/proc" "/proc/mounts"; then
@@ -65,23 +72,21 @@ prepare()
 {
     echo "Preparing update..."
 
-    temp_folder="$(mktemp -d)"
-
-    if ! mount --bind "${temp_folder}" "${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}"; then
-        echo "Error, update failed: temp source update directory: '${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}' cannot be mounted."
-        return 1
-    fi
-
     if ! grep -q "${TOOLBOX_MOUNT}/proc" "/proc/mounts"; then
-        mount --bind /proc "${TOOLBOX_MOUNT}/proc" || return 1
+        mount -t proc none "${TOOLBOX_MOUNT}/proc"
     fi
 
     if ! grep -q "${TOOLBOX_MOUNT}/dev" "/proc/mounts"; then
-        mount -t devtmpfs none "${TOOLBOX_MOUNT}/dev" || return 1
+        mount -t devtmpfs none "${TOOLBOX_MOUNT}/dev"
     fi
 
     if ! grep -q "${TOOLBOX_MOUNT}/tmp" "/proc/mounts"; then
-        mount -t tmpfs none "${TOOLBOX_MOUNT}/tmp" || return 1
+        mount -t tmpfs none "${TOOLBOX_MOUNT}/tmp"
+    fi
+
+    if ! mount -t tmpfs none "${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}"; then
+        echo "Error, update failed: temporary source update directory: '${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}' cannot be mounted."
+        exit 1
     fi
 }
 
@@ -95,58 +100,63 @@ extract_update_rootfs()
     nr_files="$(find "${UPDATE_MOUNT}" -maxdepth 1 -iname "${update_rootfs_pattern}" | wc -l)"
     if [ "${nr_files}" -eq 0 ]; then
         echo "Error, update failed: no update rootfs with the pattern '${update_rootfs_pattern}' found on '${UPDATE_MOUNT}'."
-        return 1
+        exit 1
     fi
 
     if [ "${nr_files}" -gt 1 ]; then
         echo "Error, update failed: multiple update filesystem archives found on '${UPDATE_MOUNT}'."
-        return 1
+        exit 1
     fi
 
     # shellcheck disable=SC2086
-    # Disabled because file globbing is needed here
+    # Allow file globing for ${update_rootfs_pattern}
     update_rootfs_archive="$(basename "${UPDATE_MOUNT}/"${update_rootfs_pattern})"
-    echo "Found '${update_rootfs_archive}', attempting to extract to '${TOOLBOX_MOUNT}${UPDATE_ROOTFS_SOURCE}'."
+    echo "Found '${update_rootfs_archive}', attempting to extract to '${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}'."
     if ! tar -tJf "${UPDATE_MOUNT}/${update_rootfs_archive}" > /dev/null 2> /dev/null; then
-        echo "Error, update failed: ${UPDATE_MOUNT}/${update_rootfs_archive} is corrupt"
-        return 1
+        echo "Error, update failed: ${UPDATE_MOUNT}/${update_rootfs_archive} is corrupt."
+        exit 1
     fi
 
     if [ ! -d "${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}" ]; then
         echo "Error, update failed: source update directory: '${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}' does not exist."
-        return 1
+        exit 1
     fi
 
-    if ! tar xfJ "${UPDATE_MOUNT}/${update_rootfs_archive}" -C "${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}" \
+    if ! tar -xJf "${UPDATE_MOUNT}/${update_rootfs_archive}" -C "${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}" \
             > /dev/null 2> /dev/null; then
         echo "Error: unable to extract '${UPDATE_MOUNT}/${update_rootfs_archive}' to '${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}'."
-        return 1
+        exit 1
     fi
 
     echo "Successfully extracted '${UPDATE_MOUNT}/${update_rootfs_archive}' to '${TOOLBOX_MOUNT}/${UPDATE_ROOTFS_SOURCE}'."
-    return 0
 }
 
 perform_update()
 {
     echo "Performing update..."
-    chroot_environment="SYSTEM_UPDATE_DIR=${SYSTEM_UPDATE_DIR}"
-    chroot_environment="${chroot_environment} PARTITION_TABLE_FILE=${PARTITION_TABLE_FILE}"
-    chroot_environment="${chroot_environment} UPDATE_EXCLUDE_LIST_FILE=${UPDATE_EXCLUDE_LIST_FILE}"
-    chroot_environment="${chroot_environment} UPDATE_ROOTFS_SOURCE=${UPDATE_ROOTFS_SOURCE}"
-    chroot_environment="${chroot_environment} TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE}"
+    chroot_environment=" \
+        PARTITION_TABLE_FILE=${PARTITION_TABLE_FILE} \
+        SYSTEM_UPDATE_CONF_DIR=${SYSTEM_UPDATE_CONF_DIR} \
+        SYSTEM_UPDATE_SCRIPT_DIR=${SYSTEM_UPDATE_SCRIPT_DIR} \
+        TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE}\
+        UPDATE_EXCLUDE_LIST_FILE=${UPDATE_EXCLUDE_LIST_FILE} \
+        UPDATE_ROOTFS_SOURCE=${UPDATE_ROOTFS_SOURCE} \
+    "
 
-    echo "chroot script execution environment setup with: ${chroot_environment}"
+    echo "chroot script execution additional environment: "
+    echo "${chroot_environment}" | tr -s "${IFS}" '\n'
 
-    for script in "${TOOLBOX_MOUNT}${SYSTEM_UPDATE_DIR}.d/"[0-9][0-9]_*.sh; do
+    for script in "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_SCRIPT_DIR}/"[0-9][0-9]_*.sh; do
+        if [ ! -x "${script}" ]; then
+            continue
+        fi
+
         script_to_execute="${script#"${TOOLBOX_MOUNT}"}"
         echo "executing: ${script_to_execute}"
-        chroot "${TOOLBOX_MOUNT}" /bin/sh -c "${chroot_environment} ${script_to_execute}" || return 1
+        eval "${chroot_environment}" chroot "${TOOLBOX_MOUNT}" "${script_to_execute}"
     done
 
     echo "Successfully performed update."
-
-    return 0
 }
 
 while getopts ":h" options; do
@@ -216,46 +226,40 @@ if [ ! -b "${TARGET_STORAGE_DEVICE}" ]; then
     exit 1
 fi
 
-if [ -z "${SYSTEM_UPDATE_DIR}" ]; then
-    echo "Error, update failed: system update dir is not provided."
+if [ -z "${SYSTEM_UPDATE_CONF_DIR}" ]; then
+    echo "Error, update failed: system update configuration dir is not provided."
     exit 1
 fi
 
-if [ ! -d "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_DIR}" ]; then
-    echo "Error, update failed: ${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_DIR} is not a directory."
+if [ -z "${SYSTEM_UPDATE_SCRIPT_DIR}" ]; then
+    echo "Error, update failed: system update scripts dir is not provided."
     exit 1
 fi
 
-if [ ! -f "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}" ]; then
-    echo "Error, update failed: '${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}' not found."
+if [ ! -d "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_CONF_DIR}" ]; then
+    echo "Error, update failed: ${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_CONF_DIR} is not a directory."
     exit 1
 fi
 
-if [ ! -f "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}.sha512" ]; then
-    echo "Error, update failed: '${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_DIR}/${PARTITION_TABLE_FILE}.sha512' not found."
+if [ ! -f "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_CONF_DIR}/${PARTITION_TABLE_FILE}" ]; then
+    echo "Error, update failed: '${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_CONF_DIR}/${PARTITION_TABLE_FILE}' not found."
     exit 1
 fi
 
-if [ ! -f "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_DIR}/${UPDATE_EXCLUDE_LIST_FILE}" ]; then
-    echo "Error, update failed: '${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_DIR}/${UPDATE_EXCLUDE_LIST_FILE}' not found."
+if [ ! -f "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_CONF_DIR}/${PARTITION_TABLE_FILE}.sha512" ]; then
+    echo "Error, update failed: '${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_CONF_DIR}/${PARTITION_TABLE_FILE}.sha512' not found."
+    exit 1
+fi
+
+if [ ! -f "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_CONF_DIR}/${UPDATE_EXCLUDE_LIST_FILE}" ]; then
+    echo "Error, update failed: '${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_CONF_DIR}/${UPDATE_EXCLUDE_LIST_FILE}' not found."
     exit 1
 fi
 
 trap cleanup EXIT
 
-if ! prepare; then
-   echo "Update failed: unable to prepare update environment."
-   exit 1
-fi
-
-if ! extract_update_rootfs; then
-   echo "Update failed: unable to extract update files."
-   exit 1
-fi
-
-if ! perform_update; then
-   echo "Update failed: unable to perform update."
-   exit 1
-fi
+prepare
+extract_update_rootfs
+perform_update
 
 exit 0

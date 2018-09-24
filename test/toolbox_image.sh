@@ -11,16 +11,25 @@ set -eu
 # shellcheck source=test/include/chroot_env.sh
 . "test/include/chroot_env.sh"
 
-SYSTEM_UPDATE_DIR="/etc/system_update"
-SYSTEM_EXECUTABLE_DIR="/sbin"
-PREPARE_DISK_COMMAND="${SYSTEM_UPDATE_DIR}.d/30_prepare_disk.sh"
-UPDATE_FILES_COMMAND="${SYSTEM_UPDATE_DIR}.d/50_update_files.sh"
-START_UPDATE_COMMAND="${SYSTEM_EXECUTABLE_DIR}/start_update.sh"
-JEDI_PARTITION_TABLE_FILE="${SYSTEM_UPDATE_DIR}/jedi_emmc_sfdisk.table"
-JEDI_EXCLUDE_LIST_FILE="${SYSTEM_UPDATE_DIR}/jedi_update_exclude_list.txt"
+# common directory variables
+PREFIX="${PREFIX:-/usr/local}"
+EXEC_PREFIX="${PREFIX}"
+LIBEXECDIR="${EXEC_PREFIX}/libexec"
+SYSCONFDIR="${SYSCONFDIR:-/etc}"
+SBINDIR="/sbin"
+
+SYSTEM_UPDATE_CONF_DIR="${SYSTEM_UPDATE_CONF_DIR:-${SYSCONFDIR}/jedi_system_update}"
+SYSTEM_UPDATE_SCRIPT_DIR="${SYSTEM_UPDATE_SCRIPT_DIR:-${LIBEXECDIR}/jedi_system_update.d}"
+PREPARE_DISK_COMMAND="${SYSTEM_UPDATE_SCRIPT_DIR}/30_prepare_disk.sh"
+UPDATE_FILES_COMMAND="${SYSTEM_UPDATE_SCRIPT_DIR}/50_update_files.sh"
+START_UPDATE_COMMAND="${SBINDIR}/start_update.sh"
+JEDI_PARTITION_TABLE_FILE="${SYSTEM_UPDATE_CONF_DIR}/jedi_emmc_sfdisk.table"
+JEDI_EXCLUDE_LIST_FILE="${SYSTEM_UPDATE_CONF_DIR}/jedi_update_exclude_list.txt"
 TMP_TEST_IMAGE_FILE="/tmp/test_file.img"
 
 TEST_OUTPUT_FILE="$(mktemp -d)/test_results_$(basename "${0%.sh}").txt"
+
+NAME_TEMPLATE_TOOLBOX="um-update-toolbox"
 
 toolbox_image=""
 toolbox_root_dir=""
@@ -31,7 +40,7 @@ result=0
 
 setup()
 {
-    toolbox_root_dir="$(mktemp -d -t "um-update-toolbox.XXXXXXXXXX")"
+    toolbox_root_dir="$(mktemp -d -t "${NAME_TEMPLATE_TOOLBOX}.XXXXXX")"
     setup_chroot_env "${toolbox_image}" "${toolbox_root_dir}"
 
     dd if=/dev/zero of="${toolbox_root_dir}/${TMP_TEST_IMAGE_FILE}" bs=1 count=0 seek=128M
@@ -49,8 +58,8 @@ teardown()
         umount "${toolbox_root_dir}"
     fi
 
-    if [ -d "${toolbox_root_dir}" ] && [ -z "${toolbox_root_dir##/*um-update-toolbox*}" ]; then
-        rm -rf "${toolbox_root_dir}"
+    if [ -d "${toolbox_root_dir}" ] && [ -z "${toolbox_root_dir##*${NAME_TEMPLATE_TOOLBOX}*}" ]; then
+        rm -rf "${toolbox_root_dir:?}"
     fi
 }
 
@@ -111,7 +120,7 @@ test_execute_busybox()
 
 test_execute_sha512()
 {
-    chroot "${toolbox_root_dir}" sha512sum /bin/busybox > "${toolbox_root_dir}${TMP_TEST_IMAGE_FILE}" || return 1
+    chroot "${toolbox_root_dir}" sha512sum /bin/busybox > "${toolbox_root_dir}/${TMP_TEST_IMAGE_FILE}" || return 1
     chroot "${toolbox_root_dir}" sha512sum -csw "${TMP_TEST_IMAGE_FILE}" || return 1
 }
 
@@ -148,7 +157,7 @@ test_execute_resizef2fs()
 
 test_execute_mount()
 {
-   chroot "${toolbox_root_dir}" /bin/mount --version || return 1
+    chroot "${toolbox_root_dir}" /bin/mount --version || return 1
 }
 
 test_execute_rsync()
@@ -158,30 +167,30 @@ test_execute_rsync()
 
 test_start_update_command()
 {
-    test -x "${toolbox_root_dir}${START_UPDATE_COMMAND}" || return 1
+    test -x "${toolbox_root_dir}/${START_UPDATE_COMMAND}" || return 1
     chroot "${toolbox_root_dir}" "${START_UPDATE_COMMAND}" "-h" || return 1
 }
 
 test_prepare_disk_command()
 {
-    test -x "${toolbox_root_dir}${PREPARE_DISK_COMMAND}" || return 1
+    test -x "${toolbox_root_dir}/${PREPARE_DISK_COMMAND}" || return 1
     chroot "${toolbox_root_dir}" "${PREPARE_DISK_COMMAND}" "-h" || return 1
 }
 
 test_update_files_command()
 {
-    test -x "${toolbox_root_dir}${UPDATE_FILES_COMMAND}" || return 1
+    test -x "${toolbox_root_dir}/${UPDATE_FILES_COMMAND}" || return 1
     chroot "${toolbox_root_dir}" "${UPDATE_FILES_COMMAND}" "-h" || return 1
 }
 
 test_jedi_exclude_list_exists()
 {
-    test -f "${toolbox_root_dir}${JEDI_EXCLUDE_LIST_FILE}" || return 1
+    test -f "${toolbox_root_dir}/${JEDI_EXCLUDE_LIST_FILE}" || return 1
 }
 
 test_jedi_partition_table_file_exists()
 {
-    test -f "${toolbox_root_dir}${JEDI_PARTITION_TABLE_FILE}" || return 1
+    test -f "${toolbox_root_dir}/${JEDI_PARTITION_TABLE_FILE}" || return 1
 }
 
 usage()
@@ -216,7 +225,7 @@ done
 shift "$((OPTIND - 1))"
 
 if [ "${#}" -ne 1 ]; then
-    echo "Missing argument <file.img>."
+    echo "Missing argument <toolbox image file>."
     usage
     exit 1
 fi
@@ -254,8 +263,8 @@ run_test test_update_files_command
 run_test test_jedi_exclude_list_exists
 run_test test_jedi_partition_table_file_exists
 
-echo
-echo "Test results:"
+echo "________________________________________________________________________________"
+echo "Test results '${TEST_OUTPUT_FILE}':"
 echo
 cat "${TEST_OUTPUT_FILE}"
 echo "________________________________________________________________________________"
