@@ -23,7 +23,6 @@ SRC_DIR="$(pwd)"
 
 SYSTEM_UPDATE_CONF_DIR="${SYSTEM_UPDATE_CONF_DIR:-${SYSCONFDIR}/jedi_system_update}"
 SYSTEM_UPDATE_SCRIPT_DIR="${SYSTEM_UPDATE_SCRIPT_DIR:-${LIBEXECDIR}/jedi_system_update.d/}"
-UPDATE_EXCLUDE_LIST_FILE="jedi_update_exclude_list.txt"
 UPDATE_ROOTFS_SOURCE="/tmp/update_source"
 TARGET_STORAGE_DEVICE=""
 
@@ -219,6 +218,15 @@ test_no_ultimaker_software_found_nok()
 
 test_update_files_ok()
 {
+    # Note that with rsync --delete, we want to ensure both the '.keep' as
+    # well as the '.discard' file are ignored.
+    for exclude in "${SYSTEM_UPDATE_CONF_DIR}/"*".keep" \
+                   "${SYSTEM_UPDATE_CONF_DIR}/"*".discard" \
+                   "${UPDATE_ROOTFS_SOURCE}/${SYSTEM_UPDATE_CONF_DIR}"*".keep" \
+                   "${UPDATE_ROOTFS_SOURCE}/${SYSTEM_UPDATE_CONF_DIR}"*".discard"; do
+        exclude_list="${exclude_list:-} --exclude-from ${exclude}"
+    done
+
     chroot_environment=" \
         TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE} \
         UPDATE_ROOTFS_SOURCE=${UPDATE_ROOTFS_SOURCE} \
@@ -229,8 +237,10 @@ test_update_files_ok()
     update_target="$(mktemp -d -t "tmp_update_target.XXXXXX")"
     mount -t auto -v "${TARGET_STORAGE_DEVICE}p2" "${update_target}" || return 1
 
-    rsync --exclude-from "${SRC_DIR}/config/${UPDATE_EXCLUDE_LIST_FILE}" -c -a -x --dry-run \
-        "${toolbox_root_dir}/${UPDATE_ROOTFS_SOURCE}/" "${update_target}/" || return 1
+    rsync -a -c -x --dry-run \
+        "${toolbox_root_dir}/${UPDATE_ROOTFS_SOURCE}/" \
+        "${update_target}/" \
+        "${exclude_list}" || return 1
 
     umount "${update_target}"
 

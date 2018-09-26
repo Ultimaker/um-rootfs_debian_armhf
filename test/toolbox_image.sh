@@ -24,7 +24,6 @@ PREPARE_DISK_COMMAND="${SYSTEM_UPDATE_SCRIPT_DIR}/30_prepare_disk.sh"
 UPDATE_FILES_COMMAND="${SYSTEM_UPDATE_SCRIPT_DIR}/50_update_files.sh"
 START_UPDATE_COMMAND="${SBINDIR}/start_update.sh"
 JEDI_PARTITION_TABLE_FILE="${SYSTEM_UPDATE_CONF_DIR}/jedi_emmc_sfdisk.table"
-JEDI_EXCLUDE_LIST_FILE="${SYSTEM_UPDATE_CONF_DIR}/jedi_update_exclude_list.txt"
 TMP_TEST_IMAGE_FILE="/tmp/test_file.img"
 
 TEST_OUTPUT_FILE="$(mktemp -d)/test_results_$(basename "${0%.sh}").txt"
@@ -185,7 +184,7 @@ test_update_files_command()
 
 test_jedi_exclude_list_exists()
 {
-    test -f "${toolbox_root_dir}/${JEDI_EXCLUDE_LIST_FILE}" || return 1
+    test -d "${toolbox_root_dir}/${SYSTEM_UPDATE_CONF_DIR}" || return 1
 }
 
 test_jedi_partition_table_file_exists()

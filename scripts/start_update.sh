@@ -28,8 +28,6 @@ SYSTEM_UPDATE_CONF_DIR="${SYSTEM_UPDATE_CONF_DIR:-${SYSCONFDIR}/jedi_system_upda
 SYSTEM_UPDATE_SCRIPT_DIR="${SYSTEM_UPDATE_SCRIPT_DIR:-${LIBEXECDIR}/jedi_system_update.d/}"
 # The partition table file to use, default jedi_emmc_sfdisk.table, should exist in the system update dir.
 PARTITION_TABLE_FILE="${PARTITION_TABLE_FILE:-jedi_emmc_sfdisk.table}"
-# The exclude file list when updating the firmware files, should exist in the system update dir.
-UPDATE_EXCLUDE_LIST_FILE="${UPDATE_EXCLUDE_LIST_FILE:-jedi_update_exclude_list.txt}"
 # The directory in the chroot environment containing the source update files.
 UPDATE_ROOTFS_SOURCE="/mnt/update_rootfs_source"
 
@@ -139,7 +137,6 @@ perform_update()
         SYSTEM_UPDATE_CONF_DIR=${SYSTEM_UPDATE_CONF_DIR} \
         SYSTEM_UPDATE_SCRIPT_DIR=${SYSTEM_UPDATE_SCRIPT_DIR} \
         TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE}\
-        UPDATE_EXCLUDE_LIST_FILE=${UPDATE_EXCLUDE_LIST_FILE} \
         UPDATE_ROOTFS_SOURCE=${UPDATE_ROOTFS_SOURCE} \
     "
 
@@ -248,11 +245,6 @@ fi
 
 if [ ! -f "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_CONF_DIR}/${PARTITION_TABLE_FILE}.sha512" ]; then
     echo "Error, update failed: '${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_CONF_DIR}/${PARTITION_TABLE_FILE}.sha512' not found."
-    exit 1
-fi
-
-if [ ! -f "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_CONF_DIR}/${UPDATE_EXCLUDE_LIST_FILE}" ]; then
-    echo "Error, update failed: '${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_CONF_DIR}/${UPDATE_EXCLUDE_LIST_FILE}' not found."
     exit 1
 fi
 

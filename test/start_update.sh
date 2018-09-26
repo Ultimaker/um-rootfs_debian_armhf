@@ -25,7 +25,6 @@ UPDATE_ROOTFS_SOURCE="/tmp/update_source"
 TARGET_STORAGE_DEVICE=""
 
 JEDI_PARTITION_TABLE_FILE_NAME="config/jedi_emmc_sfdisk.table"
-UPDATE_EXCLUDE_LIST_FILE="config/jedi_update_exclude_list.txt"
 
 STORAGE_DEVICE_IMG="storage_device.img"
 BYTES_PER_SECTOR="512"
@@ -208,14 +207,24 @@ test_multiple_update_rootfs_files_nok()
 
 test_successful_update_ok()
 {
+    # Note that with rsync --delete, we want to ensure both the '.keep' as
+    # well as the '.discard' file are ignored.
+    for exclude in "${SYSTEM_UPDATE_CONF_DIR}/"*".keep" \
+                   "${SYSTEM_UPDATE_CONF_DIR}/"*".discard" \
+                   "${UPDATE_ROOTFS_SOURCE}/${SYSTEM_UPDATE_CONF_DIR}"*".keep" \
+                   "${UPDATE_ROOTFS_SOURCE}/${SYSTEM_UPDATE_CONF_DIR}"*".discard"; do
+        exclude_list="${exclude_list:-} --exclude-from ${exclude}"
+    done
+
     cp "${TEST_UPDATE_ROOTFS_FILE}" "${update_mount}/${TEMP_TEST_UPDATE_ROOTFS_FILE}"
     "${toolbox_root_dir}/${START_UPDATE_COMMAND}" "${toolbox_root_dir}" "${update_mount}" "${TARGET_STORAGE_DEVICE}" || return 1
 
     update_target="$(mktemp -d)"
     mount -t auto -v "${TARGET_STORAGE_DEVICE}p2" "${update_target}"
 
-    rsync --exclude-from "${SRC_DIR}/${UPDATE_EXCLUDE_LIST_FILE}" -c -a -x --dry-run \
-        "${toolbox_root_dir}/${UPDATE_ROOTFS_SOURCE}/" "${update_target}/" || return 1
+    rsync -a -c -x --dry-run \
+        "${toolbox_root_dir}/${UPDATE_ROOTFS_SOURCE}/" "${update_target}/" \
+        "${exclude_list}" || return 1
 
     umount "${update_target}"
 
