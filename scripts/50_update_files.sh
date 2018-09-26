@@ -106,9 +106,13 @@ while getopts ":d:hs:" options; do
 done
 shift "$((OPTIND - 1))"
 
-if [ -z "${UPDATE_ROOTFS_SOURCE}" ] || [ -z "${TARGET_STORAGE_DEVICE}" ]; then
-    echo "Missing arguments <UPDATE_ROOTFS_SOURCE> and/or <TARGET_STORAGE_DEVICE>."
-    usage
+if [ -z "${UPDATE_ROOTFS_SOURCE}" ]; then
+    echo "Missing arguments <UPDATE_ROOTFS_SOURCE>."
+    exit 1
+fi
+
+if [ -z "${TARGET_STORAGE_DEVICE}" ]; then
+    echo "Missing arguments <TARGET_STORAGE_DEVICE>."
     exit 1
 fi
 
