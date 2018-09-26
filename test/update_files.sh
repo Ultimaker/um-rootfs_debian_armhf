@@ -108,17 +108,17 @@ teardown()
         TARGET_STORAGE_DEVICE=""
     fi
 
-    if [ -d "${toolbox_root_dir}/${UPDATE_ROOTFS_SOURCE}" ] && [ -z "${toolbox_root_dir##*um-update-toolbox*}" ]; then
+    if [ -d "${toolbox_root_dir}/${UPDATE_ROOTFS_SOURCE}" ] && [ -z "${toolbox_root_dir##*${NAME_TEMPLATE_TOOLBOX}*}" ]; then
         rm -rf "${toolbox_root_dir:?}${UPDATE_ROOTFS_SOURCE}"
     fi
 
     cd "${SRC_DIR}"
 
-    if [ -d "${work_dir}" ] && [ -z "${work_dir##*update_files_workdir*}" ]; then
+    if [ -d "${work_dir}" ] && [ -z "${work_dir##*${NAME_TEMPLATE_WORKDIR}*}" ]; then
         rm -r "${work_dir}"
     fi
 
-    if [ -d "${toolbox_root_dir}" ] && [ -z "${toolbox_root_dir##*um-update-toolbox*}" ]; then
+    if [ -d "${toolbox_root_dir}" ] && [ -z "${toolbox_root_dir##*${NAME_TEMPLATE_TOOLBOX}*}" ]; then
         rm -r "${toolbox_root_dir}"
     fi
 }

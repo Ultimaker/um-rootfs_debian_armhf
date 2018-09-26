@@ -139,7 +139,7 @@ teardown()
 
     cd "${SRC_DIR}"
 
-    if [ -d "${work_dir}" ] && [ -z "${work_dir##*${NAME_TEMPLATE_TOOLBOX}*}" ]; then
+    if [ -d "${work_dir}" ] && [ -z "${work_dir##*${NAME_TEMPLATE_WORKDIR}*}" ]; then
         rm -r "${work_dir}"
     fi
 
