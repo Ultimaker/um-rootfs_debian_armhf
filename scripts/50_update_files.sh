@@ -108,36 +108,43 @@ shift "$((OPTIND - 1))"
 
 if [ -z "${UPDATE_ROOTFS_SOURCE}" ]; then
     echo "Missing arguments <UPDATE_ROOTFS_SOURCE>."
+    usage
     exit 1
 fi
 
 if [ -z "${TARGET_STORAGE_DEVICE}" ]; then
     echo "Missing arguments <TARGET_STORAGE_DEVICE>."
+    usage
     exit 1
 fi
 
 if [ ! -d "${UPDATE_ROOTFS_SOURCE}" ]; then
     echo "Update failed: '${UPDATE_ROOTFS_SOURCE}' does not exist."
+    usage
     exit 1
 fi
 
 if ! cat "${UPDATE_ROOTFS_SOURCE}/etc/debian_version" 2> /dev/null; then
     echo "Update failed: no Debian distribution found."
+    usage
     exit 1
 fi
 
 if ! cat "${UPDATE_ROOTFS_SOURCE}/etc/ultimaker_version" 2> /dev/null; then
     echo "Update failed: no Ultimaker software found."
+    usage
     exit 1
 fi
 
 if [ ! -b "${TARGET_STORAGE_DEVICE}" ]; then
     echo "Update failed: '${TARGET_STORAGE_DEVICE}' is not a valid block device."
+    usage
     exit 1
 fi
 
 if [ ! -f "${SYSTEM_UPDATE_CONF_DIR}/${UPDATE_EXCLUDE_LIST_FILE}" ]; then
     echo "Update failed: file '${SYSTEM_UPDATE_CONF_DIR}/${UPDATE_EXCLUDE_LIST_FILE}' not found."
+    usage
     exit 1
 fi
 
