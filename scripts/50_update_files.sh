@@ -7,6 +7,8 @@
 
 set -eu
 
+trap cleanup EXIT
+
 # common directory variables
 SYSCONFDIR="${SYSCONFDIR:-/etc}"
 
@@ -17,7 +19,8 @@ TARGET_STORAGE_DEVICE="${TARGET_STORAGE_DEVICE:-}"
 UPDATE_ROOTFS_SOURCE="${UPDATE_ROOTFS_SOURCE:-}"
 # end system_update wide configuration settings
 
-UPDATE_TARGET="/tmp/target_root"
+NAME_TEMPLATE_UPDATE_TARGET="um-target_root"
+UPDATE_TARGET="$(mktemp -d -t "${NAME_TEMPLATE_UPDATE_TARGET}.XXXXXX")"
 
 usage()
 {
@@ -32,10 +35,39 @@ usage()
     echo "adding them to the scripts runtime environment."
 }
 
+cleanup()
+{
+    # On slow media, umount and/or rmdir can fail with 'resource busy' errors.
+    # To do our best with cleanup, attempt this a few times before giving up.
+    failed=0
+    while test -d "${UPDATE_TARGET}"; do
+        if grep -q "${UPDATE_TARGET}" "/proc/mounts"; then
+            if ! umount "${UPDATE_TARGET}"; then
+                failed="$((failed + 1))"
+            fi
+        fi
+
+        if [ -d "${UPDATE_TARGET}" ] && \
+           [ -z "${UPDATE_TARGET##*${NAME_TEMPLATE_UPDATE_TARGET}*}" ]; then
+            if ! rmdir "${UPDATE_TARGET}"; then
+                failed="$((failed + 1))"
+            fi
+        fi
+
+        if [ "${failed}" -ge 300 ]; then
+            echo "Failed to properly cleanup."
+            exit 1
+        fi
+
+        sleep 1
+    done
+}
+
 perform_update()
 {
     if [ ! -d "${UPDATE_TARGET}" ]; then
-        mkdir -p "${UPDATE_TARGET}"
+        echo "Unable to perform update, missing update target directory."
+        exit 1
     fi
 
     if ! mount -t auto -v "${TARGET_STORAGE_DEVICE}p2" "${UPDATE_TARGET}"; then
@@ -47,10 +79,6 @@ perform_update()
         "${UPDATE_ROOTFS_SOURCE}/" "${UPDATE_TARGET}/"; then
         echo "Error: unable to sync files from ${UPDATE_ROOTFS_SOURCE}/ to ${UPDATE_TARGET}/."
         exit 1
-    fi
-
-    if grep -qE "${UPDATE_TARGET}" "/proc/mounts"; then
-        umount "${UPDATE_TARGET}"
     fi
 }
 
@@ -78,39 +106,51 @@ while getopts ":d:hs:" options; do
 done
 shift "$((OPTIND - 1))"
 
-if [ -z "${UPDATE_ROOTFS_SOURCE}" ] || [ -z "${TARGET_STORAGE_DEVICE}" ]; then
-    echo "Missing arguments <UPDATE_ROOTFS_SOURCE> and/or <TARGET_STORAGE_DEVICE>."
+if [ -z "${UPDATE_ROOTFS_SOURCE}" ]; then
+    echo "Missing arguments <UPDATE_ROOTFS_SOURCE>."
+    usage
+    exit 1
+fi
+
+if [ -z "${TARGET_STORAGE_DEVICE}" ]; then
+    echo "Missing arguments <TARGET_STORAGE_DEVICE>."
     usage
     exit 1
 fi
 
 if [ ! -d "${UPDATE_ROOTFS_SOURCE}" ]; then
     echo "Update failed: '${UPDATE_ROOTFS_SOURCE}' does not exist."
+    usage
     exit 1
 fi
 
 if ! cat "${UPDATE_ROOTFS_SOURCE}/etc/debian_version" 2> /dev/null; then
     echo "Update failed: no Debian distribution found."
+    usage
     exit 1
 fi
 
 if ! cat "${UPDATE_ROOTFS_SOURCE}/etc/ultimaker_version" 2> /dev/null; then
     echo "Update failed: no Ultimaker software found."
+    usage
     exit 1
 fi
 
 if [ ! -b "${TARGET_STORAGE_DEVICE}" ]; then
     echo "Update failed: '${TARGET_STORAGE_DEVICE}' is not a valid block device."
+    usage
     exit 1
 fi
 
 if [ ! -f "${SYSTEM_UPDATE_CONF_DIR}/${UPDATE_EXCLUDE_LIST_FILE}" ]; then
     echo "Update failed: file '${SYSTEM_UPDATE_CONF_DIR}/${UPDATE_EXCLUDE_LIST_FILE}' not found."
+    usage
     exit 1
 fi
 
 echo "Updating to Ultimaker version: $(cat "${UPDATE_ROOTFS_SOURCE}/etc/ultimaker_version")"
 
 perform_update
+cleanup
 
 exit 0
