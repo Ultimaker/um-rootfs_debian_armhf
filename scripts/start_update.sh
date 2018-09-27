@@ -28,10 +28,11 @@ SYSTEM_UPDATE_CONF_DIR="${SYSTEM_UPDATE_CONF_DIR:-${SYSCONFDIR}/jedi_system_upda
 SYSTEM_UPDATE_SCRIPT_DIR="${SYSTEM_UPDATE_SCRIPT_DIR:-${LIBEXECDIR}/jedi_system_update.d/}"
 # The partition table file to use, default jedi_emmc_sfdisk.table, should exist in the system update dir.
 PARTITION_TABLE_FILE="${PARTITION_TABLE_FILE:-jedi_emmc_sfdisk.table}"
-# The exclude file list when updating the firmware files, should exist in the system update dir.
-UPDATE_EXCLUDE_LIST_FILE="${UPDATE_EXCLUDE_LIST_FILE:-jedi_update_exclude_list.txt}"
 # The directory in the chroot environment containing the source update files.
 UPDATE_ROOTFS_SOURCE="/mnt/update_rootfs_source"
+# Directory containing data file archives for data save/restore.
+NAME_TEMPLATE_UPDATE_SAVE_DIR="um-save_dir"
+UPDATE_SAVE_DIR="$(mktemp -d -t "${NAME_TEMPLATE_UPDATE_SAVE_DIR}.XXXXXX")"
 
 update_rootfs_archive=""
 
@@ -66,6 +67,11 @@ cleanup()
         echo "Cleaning up, unmount: '${TOOLBOX_MOUNT}/tmp'."
         umount "${TOOLBOX_MOUNT}/tmp"
     fi
+
+    # Note, we are purposely not cleanup up $UPDATE_SAVE_DIR, to ensure we keep
+    # the configuration data backup until a reboot. This, in case an update
+    # fails and we may still want to do something with it.
+    # After a reboot however, the save files will be gone however.
 }
 
 prepare()
@@ -135,11 +141,11 @@ perform_update()
 {
     echo "Performing update..."
     chroot_environment=" \
+        UPDATE_SAVE_DIR=${UPDATE_SAVE_DIR} \
         PARTITION_TABLE_FILE=${PARTITION_TABLE_FILE} \
         SYSTEM_UPDATE_CONF_DIR=${SYSTEM_UPDATE_CONF_DIR} \
         SYSTEM_UPDATE_SCRIPT_DIR=${SYSTEM_UPDATE_SCRIPT_DIR} \
         TARGET_STORAGE_DEVICE=${TARGET_STORAGE_DEVICE}\
-        UPDATE_EXCLUDE_LIST_FILE=${UPDATE_EXCLUDE_LIST_FILE} \
         UPDATE_ROOTFS_SOURCE=${UPDATE_ROOTFS_SOURCE} \
     "
 
@@ -248,11 +254,6 @@ fi
 
 if [ ! -f "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_CONF_DIR}/${PARTITION_TABLE_FILE}.sha512" ]; then
     echo "Error, update failed: '${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_CONF_DIR}/${PARTITION_TABLE_FILE}.sha512' not found."
-    exit 1
-fi
-
-if [ ! -f "${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_CONF_DIR}/${UPDATE_EXCLUDE_LIST_FILE}" ]; then
-    echo "Error, update failed: '${TOOLBOX_MOUNT}/${SYSTEM_UPDATE_CONF_DIR}/${UPDATE_EXCLUDE_LIST_FILE}' not found."
     exit 1
 fi
 

@@ -16,6 +16,10 @@ On top of the standard *distro* we install the required tooling, such as; *e2fsp
 This directory contains configuration files that are used by the
 system configuration scripts in the 'scripts' directory. The config files
 are installed in the '/etc/jedi_system_update'.
+The data save list files are also contained here, ending in the *.keep* suffix.
+Files to be excluded during an update end with the *.discard* suffix.
+Files listed should be relative paths and be relative from the partition where
+they are found.
 
 #### Scripts directory:
 Contains update and setup scripts. The main entrypoint is 'start_update.sh' which is installed
@@ -65,15 +69,13 @@ the scripts is prepared so that the script can be executed generically.
                              default is 'jedi_emmc_sfdisk.table', implicitly the 
                              script will look for a counterpart checksum file:
                              '<filename>.sha512'
-* UPDATE_EXCLUDE_LIST_FILE - A file containing all files and directories to be excluded
-                             used by the 'update_files.sh script, default is 'jedi_update_exclude_list.txt'
 * UPDATE_ROOTFS_SOURCE     - This is the directory within the toolbox root that contains the update files.
                              It is used e.g. in the 'update_files.sh' script as the source directory for the
                              update files. 
 * SYSTEM_UPDATE_CONF_DIR   - The system update directory is a directory within the toolbox root 
                              that contains the system update configuration. The configuration files 
-                             can be found in '/etc/jedi_system_update', i.e. the partition table and exclude
-                             list file.
+                             can be found in '/etc/jedi_system_update', i.e. the partition table and data
+                             save list.
 * SYSTEM_UPDATE_SCRIPT_DIR - The system update scripts directory is a directory within the toolbox root 
                              that contains the system update scripts. The system update scripts can be found
                              in (/usr/libexec/jedi_system_update.d). 

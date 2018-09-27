@@ -14,7 +14,6 @@ SYSCONFDIR="${SYSCONFDIR:-/etc}"
 
 # system_update wide configuration settings with default values
 SYSTEM_UPDATE_CONF_DIR="${SYSTEM_UPDATE_CONF_DIR:-${SYSCONFDIR}/jedi_system_update}"
-UPDATE_EXCLUDE_LIST_FILE="${UPDATE_EXCLUDE_LIST_FILE:-jedi_update_exclude_list.txt}"
 TARGET_STORAGE_DEVICE="${TARGET_STORAGE_DEVICE:-}"
 UPDATE_ROOTFS_SOURCE="${UPDATE_ROOTFS_SOURCE:-}"
 # end system_update wide configuration settings
@@ -75,8 +74,17 @@ perform_update()
         exit 1
     fi
 
-    if ! rsync --exclude-from "${SYSTEM_UPDATE_CONF_DIR}/${UPDATE_EXCLUDE_LIST_FILE}" -c -a --delete -x \
-        "${UPDATE_ROOTFS_SOURCE}/" "${UPDATE_TARGET}/"; then
+    # Note that with rsync --delete, we want to ensure both the '.keep' as
+    # well as the '.discard' file are ignored.
+    for exclude in "${SYSTEM_UPDATE_CONF_DIR}/"*".keep" \
+                   "${SYSTEM_UPDATE_CONF_DIR}/"*".discard" \
+                   "${UPDATE_ROOTFS_SOURCE}/${SYSTEM_UPDATE_CONF_DIR}"*".keep" \
+                   "${UPDATE_ROOTFS_SOURCE}/${SYSTEM_UPDATE_CONF_DIR}"*".discard"; do
+        exclude_list="${exclude_list:-} --exclude-from ${exclude}"
+    done
+
+    if ! eval rsync -a -c -x --delete \
+        "${UPDATE_ROOTFS_SOURCE}/" "${UPDATE_TARGET}/" "${exclude_list}"; then
         echo "Error: unable to sync files from ${UPDATE_ROOTFS_SOURCE}/ to ${UPDATE_TARGET}/."
         exit 1
     fi
@@ -142,8 +150,14 @@ if [ ! -b "${TARGET_STORAGE_DEVICE}" ]; then
     exit 1
 fi
 
-if [ ! -f "${SYSTEM_UPDATE_CONF_DIR}/${UPDATE_EXCLUDE_LIST_FILE}" ]; then
-    echo "Update failed: file '${SYSTEM_UPDATE_CONF_DIR}/${UPDATE_EXCLUDE_LIST_FILE}' not found."
+if [ ! -d "${SYSTEM_UPDATE_CONF_DIR}" ]; then
+    echo "Missing toolbox directory containing filter files, cannot continue."
+    usage
+    exit 1
+fi
+
+if [ ! -d "${UPDATE_ROOTFS_SOURCE}/${SYSTEM_UPDATE_CONF_DIR}" ]; then
+    echo "Missing rootfs directory containing filter files, cannot continue."
     usage
     exit 1
 fi
