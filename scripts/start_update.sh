@@ -30,6 +30,9 @@ SYSTEM_UPDATE_SCRIPT_DIR="${SYSTEM_UPDATE_SCRIPT_DIR:-${LIBEXECDIR}/jedi_system_
 PARTITION_TABLE_FILE="${PARTITION_TABLE_FILE:-jedi_emmc_sfdisk.table}"
 # The directory in the chroot environment containing the source update files.
 UPDATE_ROOTFS_SOURCE="/mnt/update_rootfs_source"
+# Directory containing data file archives for data save/restore.
+NAME_TEMPLATE_UPDATE_SAVE_DIR="um-save_dir"
+UPDATE_SAVE_DIR="$(mktemp -d -t "${NAME_TEMPLATE_UPDATE_SAVE_DIR}.XXXXXX")"
 
 update_rootfs_archive=""
 
@@ -64,6 +67,11 @@ cleanup()
         echo "Cleaning up, unmount: '${TOOLBOX_MOUNT}/tmp'."
         umount "${TOOLBOX_MOUNT}/tmp"
     fi
+
+    # Note, we are purposely not cleanup up $UPDATE_SAVE_DIR, to ensure we keep
+    # the configuration data backup until a reboot. This, in case an update
+    # fails and we may still want to do something with it.
+    # After a reboot however, the save files will be gone however.
 }
 
 prepare()
@@ -133,6 +141,7 @@ perform_update()
 {
     echo "Performing update..."
     chroot_environment=" \
+        UPDATE_SAVE_DIR=${UPDATE_SAVE_DIR} \
         PARTITION_TABLE_FILE=${PARTITION_TABLE_FILE} \
         SYSTEM_UPDATE_CONF_DIR=${SYSTEM_UPDATE_CONF_DIR} \
         SYSTEM_UPDATE_SCRIPT_DIR=${SYSTEM_UPDATE_SCRIPT_DIR} \
